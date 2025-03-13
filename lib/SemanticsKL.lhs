@@ -149,12 +149,12 @@ We implement groundFormula as follows:
 
 \begin{code}
 groundFormula :: Formula -> Set StdName -> [Formula]
-groundFormula f domain = do
+groundFormula f dom = do
   -- converts the set of free variables in f to a list
   let fvs = Set.toList (freeVars f)
   -- creates a list of all possible assignments of domain elements to each free variable
   -- For each variable in fvs, toList domain provides the list of standard names, mapM applies this (monadically), producing all the combinations
-  subs <- mapM (\_ -> Set.toList domain) fvs
+  subs <- mapM (\_ -> Set.toList dom) fvs
   --iteratively substitute each variable v with a standard name n in the formula
   return $ foldl (\acc (v, n) -> subst v n acc) f (zip fvs subs)
 \end{code}
