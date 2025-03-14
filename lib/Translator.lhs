@@ -1,12 +1,10 @@
-{-# OPTIONS_GHC -Wno-unused-local-binds #-}
-{-# OPTIONS_GHC -Wno-unused-local-binds #-}
 \sec{Comparing KL and Epistemic Logic}
 \begin{code}
 module Translator where
 
 import Data.List
---import Data.List (nub, subsequences, sequence)
-import Data.Maybe --ADDTHISTOTHE ORIGINAL DOCUMENT
+import Data.Maybe
+import GHC.Num
 
 -- importing syntax and semantics of KL
 import SyntaxKL
@@ -149,248 +147,38 @@ isValidKr f (KrM univ _ rel) =
   in all (\v -> all (\w -> makesTrue (KrM univ v rel, w) f) univ) valuations
 \end{code}
 
-\subsection{IntKripkeModel to KripkeModel}
-
+To enable easier specification of models, and easier printing, we also define a Kripke Model
+where worlds are of type Int:
 \begin{code}
-
-makeWorldState :: Integer -> WorldState
-makeWorldState n =
-  let uniqueAtom = Pred "WorldID" [StdNameTerm (StdName (show n))]
-  in mkWorldState [(uniqueAtom, True)] []
-
-convertToWorldStateModel :: IntKripkeModel -> KripkeModel
-convertToWorldStateModel (IntKrM intUniv intVal intRel) =
-  let worldStates = map makeWorldState intUniv
-      worldToInt :: WorldState -> Integer
-      worldToInt ws = case find (\(i, w) -> w == ws) (zip intUniv worldStates) of
-                        Just (i, _) -> i
-                        Nothing -> error "WorldState not found in universe"
-      newVal :: Valuation
-      newVal ws = intVal (worldToInt ws)
-      newRel :: Relation
-      newRel = [(makeWorldState i, makeWorldState j) | (i, j) <- intRel]
-  in KrM worldStates newVal newRel
-
+type IntWorld = Integer
+type IntUniverse = [IntWorld]
+type IntValuation = IntWorld -> [Proposition]
+type IntRelation = [(IntWorld, IntWorld)]
+data IntKripkeModel = IntKrM IntUniverse IntValuation IntRelation
+\end{code}
+We define a function to convert from KripkeModels to IntKripkeModels:
+\begin{code}
+translateKrToKrInt :: KripkeModel -> IntKripkeModel
+translateKrToKrInt (KrM u v r) = IntKrM u' v' r' where
+   ur = nub u -- the function first gets rid of duplicate worlds in the model
+   u' = take (length ur) [0..] 
+   v' n = v (intToWorldState ur n) where
+      intToWorldState :: Universe -> Integer -> WorldState
+      intToWorldState ur n = ur !! integerToInt n
+   r' = [(worldStateToInt ur w, worldStateToInt ur w') | (w,w') <- r] where
+      worldStateToInt :: Universe -> WorldState -> Integer
+      worldStateToInt uni w = toInteger $ fromJust $ elemIndex w uni 
+      
 \end{code}
 
-To be able to test this, I will add some Kripke Models
-
+To be able to print Models, let's define a Show instance for IntKripkeModels, and for KripkeModels:
 \begin{code}
---IntegerKripkeModel to KripkeModel
-
---Example 1 : Reflexive, isolated worlds
-intW0, intW1, intW2 :: IntWorld
-intW0 = 0
-intW1 = 1
-intW2 = 2
-
-intUniverse1 :: IntUniverse
-intUniverse1 = [intW0, intW1, intW2]
-
-intValuation1 :: IntValuation
-intValuation1 w
-  | w == 0 || w == 1 = [1]  -- Proposition 1 holds in worlds 0 and 1
-  | w == 2           = []   -- No propositions hold in world 2
-  | otherwise        = []
-
-intRelation1 :: IntRelation
-intRelation1 = [(0, 0), (0, 1), (1, 0), (1, 1), (2, 2)]
-
-intModel1 :: IntKripkeModel
-intModel1 = IntKrM intUniverse1 intValuation1 intRelation1
-
--- Convert to WorldState-based model
-exampleModel1 :: KripkeModel
-exampleModel1 = convertToWorldStateModel intModel1
-
---Example2 : Linear
--- Integer-based model
-intW20, intW21, intW22 :: IntWorld
-intW20 = 20
-intW21 = 21
-intW22 = 22
-
-intUniverse2 :: IntUniverse
-intUniverse2 = [intW20, intW21, intW22]
-
-intValuation2 :: IntValuation
-intValuation2 w
-  | w == 20 = [1]  -- Proposition 1 holds in world 20
-  | w == 21 = []   -- No propositions in world 21
-  | w == 22 = [1]  -- Proposition 1 holds in world 22
-  | otherwise = []
-
-intRelation2 :: IntRelation
-intRelation2 = [(20, 21), (21, 22)]  -- Linear: 20 -> 21 -> 22
-
-intModel2 :: IntKripkeModel
-intModel2 = IntKrM intUniverse2 intValuation2 intRelation2
-
-exampleModel2 :: KripkeModel
-exampleModel2 = convertToWorldStateModel intModel2
-
---Example3 : S5
--- Integer-based model
-intW30, intW31, intW32 :: IntWorld
-intW30 = 30
-intW31 = 31
-intW32 = 32
-
-intUniverse3 :: IntUniverse
-intUniverse3 = [intW30, intW31, intW32]
-
-intValuation3 :: IntValuation
-intValuation3 w
-  | w == 30 = [1]  -- Proposition 1 holds in world 30
-  | otherwise = [] -- No propositions elsewhere
-
-intRelation3 :: IntRelation
-intRelation3 = [(w1, w2) | w1 <- intUniverse3, w2 <- intUniverse3]  -- Fully connected
-
-intModel3 :: IntKripkeModel
-intModel3 = IntKrM intUniverse3 intValuation3 intRelation3
-
-exampleModel3 :: KripkeModel
-exampleModel3 = convertToWorldStateModel intModel3
-
---Example 4 : Empty relation
--- Integer-based model
-intW40, intW41, intW42 :: IntWorld
-intW40 = 40
-intW41 = 41
-intW42 = 42
-
-intUniverse4 :: IntUniverse
-intUniverse4 = [intW40, intW41, intW42]
-
-intValuation4 :: IntValuation
-intValuation4 w
-  | w == 40 = [1]  -- Proposition 1 holds in world 40
-  | w == 41 = []   -- No propositions in world 41
-  | w == 42 = [2]  -- Proposition 2 holds in world 42
-  | otherwise = []
-
-intRelation4 :: IntRelation
-intRelation4 = []  -- Empty relation
-
-intModel4 :: IntKripkeModel
-intModel4 = IntKrM intUniverse4 intValuation4 intRelation4
-
-exampleModel4 :: KripkeModel
-exampleModel4 = convertToWorldStateModel intModel4
-
---Example5 : Cyclic with multiple propositions
--- Integer-based model
-intW50, intW51, intW52 :: IntWorld
-intW50 = 50
-intW51 = 51
-intW52 = 52
-
-intUniverse5 :: IntUniverse
-intUniverse5 = [intW50, intW51, intW52]
-
-intValuation5 :: IntValuation
-intValuation5 w
-  | w == 50 = [1, 2]  -- Propositions 1 and 2 hold in world 50
-  | w == 51 = [1]     -- Proposition 1 holds in world 51
-  | w == 52 = []      -- No propositions in world 52
-  | otherwise = []
-
-intRelation5 :: IntRelation
-intRelation5 = [(50, 51), (51, 52), (52, 50)]  -- Cycle: 50 -> 51 -> 52 -> 50
-
-intModel5 :: IntKripkeModel
-intModel5 = IntKrM intUniverse5 intValuation5 intRelation5
-
-exampleModel5 :: KripkeModel
-exampleModel5 = convertToWorldStateModel intModel5
-
---Example 6 : Euclidean, Transitive, and Reflexive Frame
--- Integer-based model
-intW60, intW61, intW62, intW63, intW64 :: IntWorld
-intW60 = 60
-intW61 = 61
-intW62 = 62
-intW63 = 63
-intW64 = 64
-
-intUniverse6 :: IntUniverse
-intUniverse6 = [intW60, intW61, intW62, intW63, intW64]
-
-intValuation6 :: IntValuation
-intValuation6 w
-  | w == 60 = [1]        -- Proposition 1 holds in world 60
-  | w == 61 = [1, 2]     -- Propositions 1 and 2 hold in world 61
-  | w == 62 = []         -- No propositions in world 62
-  | w == 63 = [2]        -- Proposition 2 holds in world 63
-  | w == 64 = [1, 2]     -- Propositions 1 and 2 hold in world 64
-  | otherwise = []
-
-intRelation6 :: IntRelation
-intRelation6 = let cluster1 = [60, 61, 62]  -- First cluster: fully connected
-                   cluster2 = [63, 64]      -- Second cluster: fully connected
-               in [(w1, w2) | w1 <- cluster1, w2 <- cluster1] ++
-                  [(w1, w2) | w1 <- cluster2, w2 <- cluster2]
-
-intModel6 :: IntKripkeModel
-intModel6 = IntKrM intUniverse6 intValuation6 intRelation6
-
-exampleModel6 :: KripkeModel
-exampleModel6 = convertToWorldStateModel intModel6
-
-
---Example 7: Euclidean, Transitive, but not Reflexive Frame
--- Integer-based model
-intW70, intW71, intW72, intW73, intW74, intW75 :: IntWorld
-intW70 = 70
-intW71 = 71
-intW72 = 72
-intW73 = 73
-intW74 = 74
-intW75 = 75
-
-intUniverse7 :: IntUniverse
-intUniverse7 = [intW70, intW71, intW72, intW73, intW74, intW75]
-
-intValuation7 :: IntValuation
-intValuation7 w
-  | w == 70 = [1]
-  | w == 71 = [1, 2]
-  | w == 72 = [2]
-  | w == 73 = []
-  | w == 74 = [1]
-  | w == 75 = [1, 2]
-  | otherwise = []
-
-intRelation7 :: IntRelation
-intRelation7 = let cluster = [71, 72, 73, 74, 75]
-               in [(70, w) | w <- cluster] ++ [(w1, w2) | w1 <- cluster, w2 <- cluster]
-
-intModel7 :: IntKripkeModel
-intModel7 = IntKrM intUniverse7 intValuation7 intRelation7
-
-exampleModel7 :: KripkeModel
-exampleModel7 = convertToWorldStateModel intModel7
-
-\end{code}
-
-
-To be able to print Models, let's define a Show instance for KripkeModels:
-
-\begin{code}
--- TODO: This isn't really doing what it's supposed to. Improve!
+instance Show IntKripkeModel where
+   show (IntKrM uni val rel) = "IntKrM\n" ++ show uni ++ "\n" ++ show [(x, val x) | x <- uni ] ++ "\n" ++ show rel
+-- we define a Show Instance for KripkeModels, which just shows the KripkeModel, converted to an
+-- IntKripkeModel
 instance Show KripkeModel where
-   show (KrM uni val rel) = "KrM\n" ++ show (map (pretty uni) uni) ++ "\n" ++ show [(x, val x) | x <- uni ] ++ "\n" ++ prettyPrint uni rel where
-      pretty :: Universe -> World -> Int
-      pretty u w = Map.fromList (zip u (take (length u) [1..])) Map.! w 
-      prettyPrint :: Universe -> Relation -> String
-      prettyPrint u ((v, v'):pairs) = "(" ++ (show (pretty u v)) ++ ", " ++ (show (pretty u v')) ++ ") " ++ prettyPrint u pairs
-      prettyPrint u [] = ""
-
---Add Eq      
-instance Eq KripkeModel where
-  (==) (KrM x y z) (KrM u v w) = sort x == sort u && all (\t ->sort (y t) == sort (v t)) x && sort z == sort w
-
+   show m = show $ translateKrToKrInt m
 \end{code}
 
 Later, we will want to compare models for equality. So we'll also define an Eq instance. Comparison for
@@ -400,6 +188,18 @@ equality will work, at least as long as models are finite.
 instance Eq KripkeModel where
    (KrM u v r) == (KrM u' v' r') = 
       (nub. sort) u == (nub. sort) u' && all (\w -> (nub. sort) (v w) ==  (nub. sort) (v' w)) u && (nub. sort) r == (nub. sort) r'
+
+-- NB: the following is possible:
+-- Two KripkeModels are equal, we convert both to IntKripkeModels,
+-- and the resulting IntKripkeModels are not equal.
+-- Why is this possible? 
+-- Because when checking for equality of KripkeModels, we ignore the order of worlds in the
+-- list that defines the universe;
+-- but when we convert to IntKripkeModels, the order matters!
+-- So we may get translateModToKr model1 == kripkeM1, but when we print
+-- the lhs and rhs of the equation, we get different results.
+-- This is perfectly fine, and not unexpected, since printing works
+-- via converting to IntKripkeModels.
 \end{code}
 
 All this is taken from HW 2, with only two slight modifications:
@@ -586,7 +386,7 @@ n3 = StdName "n3" -- tina
 n4 = StdName "n4" -- tara
 
 -- a model where the actual world is part of the epistemic state
-w1, w2, w3 :: WorldState
+w1, w2, w3, w4 :: WorldState
 w1 = mkWorldState [ (Pred "P" [StdNameTerm n1], True) ] []
 w2 = mkWorldState [ (Pred "P" [StdNameTerm n2], True)
                   , (Pred "P" [StdNameTerm n3], True) ] []
