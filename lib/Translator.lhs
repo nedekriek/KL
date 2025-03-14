@@ -1,9 +1,32 @@
 \sec{Comparing KL and Epistemic Logic}
-
 \begin{code}
+module Translator where
 
+import Data.List
+
+-- importing syntax and semantics of KL
+import SyntaxKL
+import SemanticsKL
+
+import Data.Map (Map)
+import qualified Data.Map as Map
+import Data.Set (Set)
+import qualified Data.Set as Set
+
+-- we need a few definitions that were in Lou's original ModelKL, but are not in 
+-- SyntaxKL or SemanticsKL
+
+-- Helper to create a world state from atom and term assignments
+mkWorldState :: [(Atom, Bool)] -> [(Term, StdName)] -> WorldState
+mkWorldState atoms terms =
+  WorldState (Map.fromList atoms) (Map.fromList terms)
+
+-- Infinite set of standard names (simulated as a generator).
+standardNames :: [StdName]
+standardNames = map (StdName . ("n" ++) . show) [1..]
 \end{code}
 
+\subsection{Preliminaries}
 We want to compare KL and Standard Epistemic Logic based on Kripke frames.
 (Call this SEL).
 For example, we might want to compare the complexity of model checking
@@ -17,110 +40,25 @@ Three things to note:
     a knowledge operator. So we can only translate from a fragment of 
     the language of KL to SEL.
     \item Kripke models are much more general than KL models. So we can only
-    translate some Kripke models into KL models.
+    translate from a fragment of the set of Kripke models into KL models.
     \item In Kripke models, there is such a thing as evaluating a formula 
     at a specific world, whereas this has no equivalent in KL models. We need
     to take this fact into account when thinking about adequacy criteria for
     a translation function.
 \end{enumerate}
 
-\subsection{Definitions of KL models and Kripke Models}
+\subsection{Syntax and Semantics of SEL}
 
-We will represent KL models using the definition from Main. To represent
-Kripke Models, we will use the definition from HW 2, with a twist: we let
-the worlds be WorldStates, as defined in Main. This simplifies the translation
+\subsubsection{Mathematical Description of the Syntax and Semantics of SEL}
+This is just basic modal logic, as we know it.
+\subsubsection{Implementation}
+
+To represent Kripke Models, we will use the types from HW 2, with a twist: we let
+the worlds be WorldStates, as defined in "Semantics". This simplifies the translation
 functions, and doesn't matter mathematically, as the internal constitution
-of the worlds in a Kripke Model is mathematically irrelevant. 
+of the worlds in a Kripke Model is mathematically irrelevant.
 
-Here is the code copied from Lou that defines KL models:
-\begin{code}
-import Data.Map (Map)
-import qualified Data.Map as Map
-import Data.Set (Set)
-import qualified Data.Set as Set
-import Data.List (subsequences)
-
---extra import
-import Data.List
-
--- Represent Standard names as strings (e.g., "n1", "n2", ...), infinite in theory
-newtype StdName = StdName String deriving (Eq, Ord, Show)
-
--- Variables (e.g., "x", "y").
-newtype Variable = Var String deriving (Eq, Ord, Show)
-
--- Terms: variables, standard names, or function applications.
-data Term = VarTerm Variable
-          | StdNameTerm StdName
-          | FuncApp String [Term]
-          deriving (Eq, Ord, Show)
-
--- Atomic propositions: predicates applied to terms.
-data Atom = Pred String [Term] deriving (Eq, Ord, Show)
-
---KL formulas
-data Formula = Atom Atom                -- Predicate (e.g. Teach(x, "n1"))
-              | Equal Term Term         -- Equality (e.g., x = "n1")
-              | Not Formula             -- Negation 
-              | Or Formula Formula      -- Disjunction
-              | Exists Variable Formula -- Existential (e.g., exists x (Teach x "sue")) TODO
-              | K Formula               -- Knowledge Operator (e.g., K (Teach "ted" "sue"))
-              deriving (Show)
-
--- TODO: model forall, rightarrow, leftrightarrow
-
--- World state: assigns values to primitive terms and atoms.
-data WorldState = WorldState
-  { atomValues :: Map Atom Bool        -- Truth values of ground atoms
-  , termValues :: Map Term StdName     -- Values of ground terms
-  } deriving (Eq, Ord, Show)
-
--- Infinite set of standard names (simulated as a generator).
-standardNames :: [StdName]
-standardNames = map (StdName . ("n" ++) . show) [1..]
-
--- Epistemic state: a set of possible world states.
-type EpistemicState = Set WorldState
-
--- Helper to create a world state from atom and term assignments
-mkWorldState :: [(Atom, Bool)] -> [(Term, StdName)] -> WorldState
-mkWorldState atoms terms =
-  WorldState (Map.fromList atoms) (Map.fromList terms)
-
--- Make Model explicit
-data Model = Model
-  { actualWorld :: WorldState      -- The actual world state
-  , epistemicState :: EpistemicState -- Set of possible world states
-  , domain :: Set StdName          -- Domain of standard names
-  } deriving (Show)
-
-\end{code}
-
-Here is the definition of Kripke Models we will be using:
-
-\begin{code}
-type World = WorldState
-type Universe = [World]
-type Proposition = Int
-
-type Valuation = World -> [Proposition]
-type Relation = [(World,World)]
-
-data KripkeModel = KrM Universe Valuation Relation
-\end{code}
-
-To be able to show Models, let's define a Show instance for KripkeModels:
-\begin{code}
-instance Show KripkeModel where
-   show (KrM uni val rel) = "KrM\n" ++ show (map (pretty uni) uni) ++ "\n" ++ show [(pretty uni x, val x) | x <- uni ] ++ "\n" ++ prettyPrint uni rel where
-      pretty :: Universe -> World -> Int
-      pretty u w = Map.fromList (zip u (take (length u) [1..])) Map.! w 
-      prettyPrint :: Universe -> Relation -> String
-      prettyPrint u ((v, v'):pairs) = "(" ++ (show (pretty u v)) ++ ", " ++ (show (pretty u v')) ++ ") " ++ prettyPrint u pairs
-      prettyPrint u [] = ""
-\end{code}
-
-And here the definition of the language for SEL:
+Syntax:
 \begin{code}
 data ModForm = P Proposition
              | Neg ModForm
@@ -133,21 +71,54 @@ disj :: ModForm -> ModForm -> ModForm
 disj f g = Neg (Con (Neg f) (Neg g))
 \end{code}
 
+Semantics:
+\begin{code}
+type World = WorldState
+type Universe = [World]
+type Proposition = Int
+
+type Valuation = World -> [Proposition]
+type Relation = [(World,World)]
+
+data KripkeModel = KrM Universe Valuation Relation
+\end{code}
+
+To be able to print Models, let's define a Show instance for KripkeModels:
+\begin{code}
+instance Show KripkeModel where
+   show (KrM uni val rel) = "KrM\n" ++ show (map (pretty uni) uni) ++ "\n" ++ show [(pretty uni x, val x) | x <- uni ] ++ "\n" ++ prettyPrint uni rel where
+      pretty :: Universe -> World -> Int
+      pretty u w = Map.fromList (zip u (take (length u) [1..])) Map.! w 
+      prettyPrint :: Universe -> Relation -> String
+      prettyPrint u ((v, v'):pairs) = "(" ++ (show (pretty u v)) ++ ", " ++ (show (pretty u v')) ++ ") " ++ prettyPrint u pairs
+      prettyPrint u [] = ""
+\end{code}
+
+All this is taken from HW 2, with only two slight modifications:
+\begin{enumerate}
+\item We use WorldStates (defined in the module "Semantics") as worlds in the Kripke Model.
+\item We use "Neg" instead of "Not" as a type constructor for negated modal formula, since
+"Not" is already being used as a type constructor for KL-formulas (see "Syntax" for details).
+\end{enumerate}
+
+\subsection{Translation functions}
+\subsubsection{Desiderata}
+This section should answer the questions:
+- What are the types of the translation functions?
+- What constraints do we want our translation functions to satisfy?
+\subsubsection{Mathematical description of the translation functions}
+- definitions of the functions in terms of the mathematical description of KL models
+(this is provided by Lou), and the mathematical description of Kripke Models (from the
+previous section)
+- ideally a proof that the functions, so defined, satisfy the desiderata laid out
+in the previous section
+\subsubsection{Implementation}
+
+Now we finally get to the implementation of our translation functions.
+
 Translation functions for formulas:
 \begin{code}
---stdname abbrevs copied from Lou
-n1 = StdName "n1" -- ted
-n2 = StdName "n2" -- sue
-n3 = StdName "n3" -- tina
-n4 = StdName "n4" -- tara
---example formulas to try out translators
-form1 = Atom (Pred "P" [StdNameTerm n1]) 
-form2 = K (Atom (Pred "P" [StdNameTerm n1]))
-form3 = Not (K (Atom (Pred "P" [StdNameTerm n1])))
---for the next ones, translateFormToKr should return Nothing
-form4 = Atom (Pred "Teach" [StdNameTerm n1, StdNameTerm n2]) 
-form5 = Not (K (Atom (Pred "Q" [StdNameTerm n1])))
-
+-- from SEL Formula to KL formula
 translateFormToKr :: Formula -> Maybe ModForm
 translateFormToKr (Atom (Pred "P" [StdNameTerm (StdName nx)])) = Just $ P (read (drop 1 nx))    
 translateFormToKr (Not f)                        = fmap Neg $ translateFormToKr f           
@@ -159,7 +130,7 @@ translateFormToKr _                              = Nothing
 
 Translation functions for models:
 \begin{code}
---TODO: remove duplicates in worlds, and rel
+-- from KL model to Kripke Model
 translateModToKr :: Model -> KripkeModel
 translateModToKr (Model w e d) = KrM (nub (w:(Set.toList e))) val (nub rel) where
    val v = trueAtomicPropsAt v
@@ -175,8 +146,33 @@ trueAtomicPropsAt w =
       
 \end{code}
 
-We check whether this works with an example adapted from Lou:
+\subsection{Tests}
+
+TODO: Now we write some tests to see whether these actually work.
 \begin{code}
+-- tests for translateFormToKr
+
+-- tests for translateModToKr
+
+-- once Milan's functions have been added:
+-- tests for seeing whether the translations interact with their
+-- “inverses” in the right way
+\end{code}
+
+\begin{code}
+--stdname abbrevs copied from Lou
+n1 = StdName "n1" -- ted
+n2 = StdName "n2" -- sue
+n3 = StdName "n3" -- tina
+n4 = StdName "n4" -- tara
+--example formulas to try out translators
+formula1 = Atom (Pred "P" [StdNameTerm n1]) 
+formula2 = K (Atom (Pred "P" [StdNameTerm n1]))
+formula3 = Not (K (Atom (Pred "P" [StdNameTerm n1])))
+--for the next ones, translateFormToKr should return Nothing
+form4 = Atom (Pred "Teach" [StdNameTerm n1, StdNameTerm n2]) 
+form5 = Not (K (Atom (Pred "Q" [StdNameTerm n1])))
+
 w1 = mkWorldState [ (Pred "P" [StdNameTerm n1], True)
                   , (Pred "P" [StdNameTerm n3], True) ] []
 w2 = mkWorldState [ (Pred "P" [StdNameTerm n1], False)
