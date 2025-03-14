@@ -347,6 +347,29 @@ TODO: Now we write some tests to see whether these actually work.
 
 \begin{code}
 -- tests for translateFormToKr
+formula1, formula2, formula3 :: Formula
+formula1 = Atom (Pred "P" [StdNameTerm n1]) 
+formula2 = K (Atom (Pred "P" [StdNameTerm n1]))
+formula3 = Not (K (Atom (Pred "P" [StdNameTerm n1])))
+-- for these, the translation function should return, respectively:
+trFormula1, trFormula2, trFormula3 :: ModForm
+trFormula1 = P 1
+trFormula2 = Box (P 1)
+trFormula3 = Neg (Box (P 1))
+
+ftest1, ftest2, ftest3 :: Bool
+ftest1 = fromJust (translateFormToKr formula1) == trFormula1
+ftest2 = fromJust (translateFormToKr formula2) == trFormula2
+ftest3 = fromJust (translateFormToKr formula3) == trFormula3
+
+--for the next ones, translateFormToKr should return Nothing
+form4, form5 :: Formula
+form4 = Atom (Pred "Teach" [StdNameTerm n1, StdNameTerm n2]) 
+form5 = Not (K (Atom (Pred "Q" [StdNameTerm n1])))
+
+ftest4, ftest5 :: Bool
+ftest4 = isNothing $ translateFormToKr form4 
+ftest5 = isNothing $ translateFormToKr form5
 
 -- tests for translateModToKr
 -- standard name abbreviations:
@@ -432,11 +455,5 @@ test3 = translateKrToKrInt (translateModToKr model1) == translateKrToKrInt (tran
 \end{code}
 
 \begin{code}
---example formulas to try out translators
-formula1 = Atom (Pred "P" [StdNameTerm n1]) 
-formula2 = K (Atom (Pred "P" [StdNameTerm n1]))
-formula3 = Not (K (Atom (Pred "P" [StdNameTerm n1])))
---for the next ones, translateFormToKr should return Nothing
-form4 = Atom (Pred "Teach" [StdNameTerm n1, StdNameTerm n2]) 
-form5 = Not (K (Atom (Pred "Q" [StdNameTerm n1])))
+
 \end{code}
