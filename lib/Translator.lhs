@@ -14,7 +14,7 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 
 -- we need a few definitions that were in Lou's original ModelKL, but are not in 
--- SyntaxKL or SemanticsKL
+-- SyntaxKL or SemanticsKL:
 
 -- Helper to create a world state from atom and term assignments
 mkWorldState :: [(Atom, Bool)] -> [(Term, StdName)] -> WorldState
@@ -85,13 +85,23 @@ data KripkeModel = KrM Universe Valuation Relation
 
 To be able to print Models, let's define a Show instance for KripkeModels:
 \begin{code}
+-- TODO: This isn't really doing what it's supposed to. Improve!
 instance Show KripkeModel where
-   show (KrM uni val rel) = "KrM\n" ++ show (map (pretty uni) uni) ++ "\n" ++ show [(pretty uni x, val x) | x <- uni ] ++ "\n" ++ prettyPrint uni rel where
+   show (KrM uni val rel) = "KrM\n" ++ show (map (pretty uni) uni) ++ "\n" ++ show [(x, val x) | x <- uni ] ++ "\n" ++ prettyPrint uni rel where
       pretty :: Universe -> World -> Int
       pretty u w = Map.fromList (zip u (take (length u) [1..])) Map.! w 
       prettyPrint :: Universe -> Relation -> String
       prettyPrint u ((v, v'):pairs) = "(" ++ (show (pretty u v)) ++ ", " ++ (show (pretty u v')) ++ ") " ++ prettyPrint u pairs
       prettyPrint u [] = ""
+\end{code}
+
+Later, we will want to compare models for equality. So we'll also define an Eq instance. Comparison for
+equality will work, at least as long as models are finite.
+\begin{code}
+-- we check that the valuations agree on all worlds in the model
+instance Eq KripkeModel where
+   (KrM u v r) == (KrM u' v' r') = 
+      (nub. sort) u == (nub. sort) u' && all (\w -> (nub. sort) (v w) ==  (nub. sort) (v' w)) u && (nub. sort) r == (nub. sort) r'
 \end{code}
 
 All this is taken from HW 2, with only two slight modifications:
@@ -133,7 +143,7 @@ Translation functions for models:
 -- from KL model to Kripke Model
 translateModToKr :: Model -> KripkeModel
 translateModToKr (Model w e d) = KrM (nub (w:(Set.toList e))) val (nub rel) where
-   val v = trueAtomicPropsAt v
+   val = trueAtomicPropsAt
    rel = [(v, v') | v <- Set.toList e, v' <- Set.toList e] ++ [(w,v) | v <- Set.toList e]
 
 atomicPropsKL :: [Atom]
@@ -153,6 +163,63 @@ TODO: Now we write some tests to see whether these actually work.
 -- tests for translateFormToKr
 
 -- tests for translateModToKr
+-- standard name abbreviations:
+n1, n2, n3, n4 :: StdName
+n1 = StdName "n1" -- ted
+n2 = StdName "n2" -- sue
+n3 = StdName "n3" -- tina
+n4 = StdName "n4" -- tara
+
+-- a model where the actual world is part of the epistemic state
+w1, w2, w3 :: WorldState
+w1 = mkWorldState [ (Pred "P" [StdNameTerm n1], True) ] []
+w2 = mkWorldState [ (Pred "P" [StdNameTerm n2], True)
+                  , (Pred "P" [StdNameTerm n3], True) ] []
+w3 = mkWorldState [ (Pred "P" [StdNameTerm n4], True) ] []
+w4 = mkWorldState [] []
+
+e1 :: EpistemicState
+e1 = Set.fromList [w1, w2, w3, w4]
+
+domain1 :: Set StdName
+domain1 = Set.fromList [n1, n2, n3, n4]
+
+model1 :: Model
+model1 = Model w1 e1 domain1
+
+-- if all goes well, this should be converted to the following KripkeModel
+kripkeM1 :: KripkeModel
+kripkeM1 = KrM uni val rel where
+   uni = [w1, w2, w3, w4]
+   val world | world == w1 = [1]
+             | world == w2 = [2, 3]
+             | world == w3 = [4]
+             | otherwise   = []
+   rel = [(v, v') | v <- uni, v' <- uni]
+
+test1 :: Bool
+test1 = translateModToKr model1 == kripkeM1 
+
+-- a model where the actual world is NOT part of the epistemic state
+e2 :: EpistemicState
+e2 = Set.fromList [w2, w3, w4]
+
+model2 :: Model
+model2 = Model w1 e2 domain1
+
+-- if all goes well, this should be converted to the following KripkeModel
+kripkeM2 :: KripkeModel
+kripkeM2 = KrM uni val rel where
+   uni = [w1, w2, w3, w4]
+   val world | world == w1 = [1]
+             | world == w2 = [2, 3]
+             | world == w3 = [4]
+             | otherwise   = []
+   rel = [(v, v') | v <- es, v' <- es] ++ [(w1, v) | v <- es] where
+      es = [w2, w3, w4]
+
+test2 :: Bool
+test2 = translateModToKr model2 == kripkeM2
 
 -- once Milan's functions have been added:
 -- tests for seeing whether the translations interact with their
@@ -160,11 +227,6 @@ TODO: Now we write some tests to see whether these actually work.
 \end{code}
 
 \begin{code}
---stdname abbrevs copied from Lou
-n1 = StdName "n1" -- ted
-n2 = StdName "n2" -- sue
-n3 = StdName "n3" -- tina
-n4 = StdName "n4" -- tara
 --example formulas to try out translators
 formula1 = Atom (Pred "P" [StdNameTerm n1]) 
 formula2 = K (Atom (Pred "P" [StdNameTerm n1]))
@@ -172,13 +234,4 @@ formula3 = Not (K (Atom (Pred "P" [StdNameTerm n1])))
 --for the next ones, translateFormToKr should return Nothing
 form4 = Atom (Pred "Teach" [StdNameTerm n1, StdNameTerm n2]) 
 form5 = Not (K (Atom (Pred "Q" [StdNameTerm n1])))
-
-w1 = mkWorldState [ (Pred "P" [StdNameTerm n1], True)
-                  , (Pred "P" [StdNameTerm n3], True) ] []
-w2 = mkWorldState [ (Pred "P" [StdNameTerm n1], False)
-                  , (Pred "P" [StdNameTerm n4], True) ] []
-w3 = mkWorldState [ (Pred "P" [StdNameTerm n1], False) ] []
-e5 = Set.fromList [w1, w2, w3]
-domain1 = Set.fromList [n1, n2, n3, n4]
-m = Model w1 e5 domain1
 \end{code}
