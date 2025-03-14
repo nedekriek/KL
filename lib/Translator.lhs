@@ -1,8 +1,11 @@
+{-# LANGUAGE InstanceSigs #-}
 \sec{Comparing KL and Epistemic Logic}
 \begin{code}
 module Translator where
 
 import Data.List
+import Data.Maybe
+import GHC.Num
 
 -- importing syntax and semantics of KL
 import SyntaxKL
@@ -83,16 +86,38 @@ type Relation = [(World,World)]
 data KripkeModel = KrM Universe Valuation Relation
 \end{code}
 
-To be able to print Models, let's define a Show instance for KripkeModels:
+To enable easier specification of models, and easier printing, we also define a Kripke Model
+where worlds are of type Int:
 \begin{code}
--- TODO: This isn't really doing what it's supposed to. Improve!
+type IntWorld = Integer
+type IntUniverse = [IntWorld]
+type IntValuation = IntWorld -> [Proposition]
+type IntRelation = [(IntWorld, IntWorld)]
+data IntKripkeModel = IntKrM IntUniverse IntValuation IntRelation
+\end{code}
+We define a function to convert from KripkeModels to IntKripkeModels:
+\begin{code}
+translateKrToKrInt :: KripkeModel -> IntKripkeModel
+translateKrToKrInt (KrM u v r) = IntKrM u' v' r' where
+   ur = nub u -- the function first gets rid of duplicate worlds in the model
+   u' = take (length ur) [0..] 
+   v' n = v (intToWorldState ur n) where
+      intToWorldState :: Universe -> Integer -> WorldState
+      intToWorldState ur n = ur !! integerToInt n
+   r' = [(worldStateToInt ur w, worldStateToInt ur w') | (w,w') <- r] where
+      worldStateToInt :: Universe -> WorldState -> Integer
+      worldStateToInt uni w = toInteger $ fromJust $ elemIndex w uni 
+      
+\end{code}
+
+To be able to print Models, let's define a Show instance for IntKripkeModels, and for KripkeModels:
+\begin{code}
+instance Show IntKripkeModel where
+   show (IntKrM uni val rel) = "IntKrM\n" ++ show uni ++ "\n" ++ show [(x, val x) | x <- uni ] ++ "\n" ++ show rel
+-- we define a Show Instance for KripkeModels, which just shows the KripkeModel, converted to an
+-- IntKripkeModel
 instance Show KripkeModel where
-   show (KrM uni val rel) = "KrM\n" ++ show (map (pretty uni) uni) ++ "\n" ++ show [(x, val x) | x <- uni ] ++ "\n" ++ prettyPrint uni rel where
-      pretty :: Universe -> World -> Int
-      pretty u w = Map.fromList (zip u (take (length u) [1..])) Map.! w 
-      prettyPrint :: Universe -> Relation -> String
-      prettyPrint u ((v, v'):pairs) = "(" ++ (show (pretty u v)) ++ ", " ++ (show (pretty u v')) ++ ") " ++ prettyPrint u pairs
-      prettyPrint u [] = ""
+   show m = show $ translateKrToKrInt m
 \end{code}
 
 Later, we will want to compare models for equality. So we'll also define an Eq instance. Comparison for
@@ -102,6 +127,18 @@ equality will work, at least as long as models are finite.
 instance Eq KripkeModel where
    (KrM u v r) == (KrM u' v' r') = 
       (nub. sort) u == (nub. sort) u' && all (\w -> (nub. sort) (v w) ==  (nub. sort) (v' w)) u && (nub. sort) r == (nub. sort) r'
+
+-- NB: the following is possible:
+-- Two KripkeModels are equal, we convert both to IntKripkeModels,
+-- and the resulting IntKripkeModels are not equal.
+-- Why is this possible? 
+-- Because when checking for equality of KripkeModels, we ignore the order of worlds in the
+-- list that defines the universe;
+-- but when we convert to IntKripkeModels, the order matters!
+-- So we may get translateModToKr model1 == kripkeM1, but when we print
+-- the lhs and rhs of the equation, we get different results.
+-- This is perfectly fine, and not unexpected, since printing works
+-- via converting to IntKripkeModels.
 \end{code}
 
 All this is taken from HW 2, with only two slight modifications:
@@ -171,7 +208,7 @@ n3 = StdName "n3" -- tina
 n4 = StdName "n4" -- tara
 
 -- a model where the actual world is part of the epistemic state
-w1, w2, w3 :: WorldState
+w1, w2, w3, w4 :: WorldState
 w1 = mkWorldState [ (Pred "P" [StdNameTerm n1], True) ] []
 w2 = mkWorldState [ (Pred "P" [StdNameTerm n2], True)
                   , (Pred "P" [StdNameTerm n3], True) ] []
