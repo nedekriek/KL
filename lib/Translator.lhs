@@ -1,4 +1,5 @@
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE InstanceSigs #-}
 \sec{Comparing KL and Epistemic Logic}
 \begin{code}
 module Translator where
@@ -83,7 +84,10 @@ type Proposition = Int
 type Valuation = World -> [Proposition]
 type Relation = [(World,World)]
 
-data KripkeModel = KrM Universe Valuation Relation
+data KripkeModel = KrM 
+   { universe :: Universe
+   , valuation :: Valuation 
+   , relation :: Relation }
 \end{code}
 
 To enable easier specification of models, and easier printing, we also define a Kripke Model
@@ -112,6 +116,8 @@ translateKrToKrInt (KrM u v r) = IntKrM u' v' r' where
 
 To be able to print Models, let's define a Show instance for IntKripkeModels, and for KripkeModels:
 \begin{code}
+-- I realise that following the convention that show should return what you need to type in to get define the object,
+-- we shouldn't really call this a Show instance, but instead something like a print function
 instance Show IntKripkeModel where
    show (IntKrM uni val rel) = "IntKrM\n" ++ show uni ++ "\n" ++ show [(x, val x) | x <- uni ] ++ "\n" ++ show rel
 -- we define a Show Instance for KripkeModels, which just shows the KripkeModel, converted to an
@@ -128,6 +134,9 @@ instance Eq KripkeModel where
    (KrM u v r) == (KrM u' v' r') = 
       (nub. sort) u == (nub. sort) u' && all (\w -> (nub. sort) (v w) ==  (nub. sort) (v' w)) u && (nub. sort) r == (nub. sort) r'
 
+instance Eq IntKripkeModel where 
+   (IntKrM u v r) == (IntKrM u' v' r') = 
+      (nub. sort) u == (nub. sort) u' && all (\w -> (nub. sort) (v w) ==  (nub. sort) (v' w)) u && (nub. sort) r == (nub. sort) r'
 -- NB: the following is possible:
 -- Two KripkeModels are equal, we convert both to IntKripkeModels,
 -- and the resulting IntKripkeModels are not equal.
@@ -189,8 +198,11 @@ atomicPropsKL = [Pred "P" [StdNameTerm n] | n <- standardNames]
 trueAtomicPropsAt :: WorldState -> [Proposition]
 trueAtomicPropsAt w = 
    map (\(Pred "P" [StdNameTerm (StdName nx)]) -> read (drop 1 nx)) trueActualAtoms where
-      trueActualAtoms = filter (`elem` atomicPropsKL) $ map fst (filter (\p -> snd p == True) (Map.toList (atomValues w)))
-      
+      trueActualAtoms = filter isActuallyAtomic $ map fst (filter (\p -> snd p == True) (Map.toList (atomValues w)))
+
+isActuallyAtomic :: Atom -> Bool
+isActuallyAtomic (Pred "P" [StdNameTerm (StdName _)]) = True
+isActuallyAtomic _ = False
 \end{code}
 
 \subsection{Tests}
@@ -257,6 +269,25 @@ kripkeM2 = KrM uni val rel where
 
 test2 :: Bool
 test2 = translateModToKr model2 == kripkeM2
+
+-- a model that contains non-atomic formulas
+w2' :: WorldState
+w2' = mkWorldState [ (Pred "P" [StdNameTerm n2], True)
+                  , (Pred "P" [StdNameTerm n3], True) 
+                  , (Pred "R" [StdNameTerm n4, StdNameTerm n1], True)] []
+
+e1' :: EpistemicState
+e1' = Set.fromList [w1, w2', w3, w4]
+
+-- model1' is like model1, except for extra formulas true in w2' that aren't
+-- true in w2
+model1' :: Model
+model1' = Model w1 e1' domain1
+
+-- if all goes well, this should be converted to a model that "looks the same as"
+-- the one model1 gets converted to
+test3 :: Bool
+test3 = translateKrToKrInt (translateModToKr model1) == translateKrToKrInt (translateModToKr model1')
 
 -- once Milan's functions have been added:
 -- tests for seeing whether the translations interact with their
