@@ -8,6 +8,9 @@ category: Logic
 ghc-options: -Wall
 
 dependencies:
+  - Tableau
+  - SyntaxKL
+  - SemanticsKL
   - QuickCheck
   - base
   - containers
@@ -33,6 +36,9 @@ tests:
     main: simpletests.lhs
     source-dirs: test
     dependencies:
+      - SyntaxKl
+      -SemanticsKL
+      -Tableau
       - report
       - QuickCheck
       - hspec

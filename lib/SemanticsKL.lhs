@@ -6,7 +6,7 @@
 \begin{code}
 module SemanticsKL where
 
-import SyntaxKL
+import SyntaxKL 
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
@@ -22,7 +22,18 @@ An epistemic state is a set of possible world states.
 data WorldState = WorldState
   { atomValues :: Map Atom Bool        -- Truth values of ground atoms
   , termValues :: Map Term StdName     -- Values of ground terms
-  } deriving (Eq, Ord, Show)
+  } deriving (Show)
+
+--Two WorldStates are equal if their atomValues and termValues maps are identical.
+instance Eq WorldState where
+  WorldState av1 tv1 == WorldState av2 tv2 = av1 == av2 && tv1 == tv2
+
+--Order WorldStates first by atomValues, then by termValues if atomValues are equal.
+instance Ord WorldState where
+  compare (WorldState av1 tv1) (WorldState av2 tv2) =
+    case compare av1 av2 of
+      EQ -> compare tv1 tv2
+      ord -> ord
 
 type EpistemicState = Set WorldState
 \end{code}
@@ -34,7 +45,7 @@ The function uses pattern matching to handle the three possible forms of Term:
 \item[1.] VarTerm $\mathunderscore$ \\
 If the term is a variable (e.g., x), it throws an error.
 This enforces a precondition that evalTerm only works on ground terms (terms with no free variables). 
-In $\mathcal{KL}$, variables must be substituted with standard names before evaluation, aligning with the semantics where only ground terms have denotations %TODO \cite{LokB}, p. 24). 
+In $\mathcal{KL}$, variables must be substituted with standard names before evaluation, aligning with the semantics where only ground terms have denotations (\cite{Lokb}, p. 24). 
 This is a runtime check to catch ungrounded inputs. 
 \item[2.] StdNameTerm n\\
 If the term is a standard name wrapped in StdNameTerm (e.g., StdNameTerm (StdName "n1")), it simply returns the underlying StdName (e.g., StdName "n1").
@@ -94,7 +105,7 @@ subst x n formula = case formula of
   Equal t1 t2 -> Equal (substTerm x n t1) (substTerm x n t2)
   Not f -> Not (subst x n f)
   Or f1 f2 -> Or (subst x n f1) (subst x n f2)
-  Exists y f | y == x -> formula -- Avoid capture
+  Exists y f | y == x -> formula -- Avoid capture 
              | otherwise -> Exists y (subst x n f)
   K f -> K (subst x n f)
 
