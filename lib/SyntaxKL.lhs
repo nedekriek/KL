@@ -31,7 +31,7 @@ To distinguish primitive terms (those that contain no variable and only a single
 -- Defines terms: variables, standard names, or function applications
 data Term = VarTerm Variable   -- A variable (e.g., "x")
           | StdNameTerm StdName   -- A standard name (e.g., "n1")
-          | FuncApp String [Term]   -- Function application (e.g., "Teacher" ("x"))
+          | FuncAppTerm String [Term]   -- Function application (e.g., "Teacher" ("x"))
           deriving (Eq, Ord, Show)
 
 -- Terms with no variables and only a single function symbol
@@ -57,7 +57,7 @@ Additional connectives like universal quantification ($\forall$), implication ($
 \begin{code}
 --Defines KL-formulas with logical and epistemic constructs
 data Formula = Atom Atom                -- Predicate (e.g. Teach(x, "n1"))
-              | Equal Term Term         --Equality (e.g., x = "n1")
+              | Equal Term Term         -- Equality (e.g., x = "n1")
               | Not Formula             -- Negation 
               | Or Formula Formula      -- Disjunction
               | Exists Variable Formula -- Existential (e.g., exists x (Teach x "sue")) 

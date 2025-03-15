@@ -100,9 +100,9 @@ If the term is a standard name wrapped in StdNameTerm (e.g., StdNameTerm (StdNam
 Standard names in $\mathcal{KL}$ are constants that denote themselves (ibid., p.22). 
 For example, if n=StdName "n1", it represents the individual n1, and its value in any world is n1. 
 In this case, no lookup or computation is needed.
-\item[3.] FuncApp f args\\
+\item[3.] FuncAppTerm f args\\
 If the term is a function application (e.g., f(n1,n2)), evalTerm evaluates the argument, by recursively computing the StdName values of each argument in args using evalTerm w. 
-Next, the ground term is constructed: It Builds a new FuncApp term where all arguments are standard names (wrapped in StdNameTerm), ensuring it's fully ground.
+Next, the ground term is constructed: It Builds a new FuncAppTerm term where all arguments are standard names (wrapped in StdNameTerm), ensuring it's fully ground.
 We then look up the value by querying the termValues map in the world state w for the denotation of this ground term, erroring on undefined terms.
 \end{itemize}
 
@@ -112,13 +112,13 @@ evalTerm :: WorldState -> Term -> StdName
 evalTerm w t = case t of
   VarTerm _ -> error "evalTerm: Variables must be substituted"  -- Variables are not ground
   StdNameTerm n -> n   -- Standard names denote themselves
-  FuncApp f args ->
+  FuncAppTerm f args ->
     let argValues = map (evalTerm w) args   -- Recursively evaluate arguments
-        groundTerm = FuncApp f (map StdNameTerm argValues)   -- Construct ground term
+        groundTerm = FuncAppTerm f (map StdNameTerm argValues)   -- Construct ground term
     in case Map.lookup groundTerm (termValues w) of
         Just n -> n   -- Found in termValues
         Nothing -> error $ "evalTerm: Undefined ground term " ++ show groundTerm   -- Error if undefined
-\end{code}
+\end{code} 
 
 \textbf{Groundness and Substitution}\\
 To support formula evaluation, isGround and isGroundFormula check for the absence of variables, while substTerm and subst perform substitution of variables with standard names, respecting quantifier scope to avoid capture.
@@ -130,7 +130,7 @@ isGround :: Term -> Bool
 isGround t = case t of
   VarTerm _ -> False
   StdNameTerm _ -> True
-  FuncApp _ args -> all isGround args
+  FuncAppTerm _ args -> all isGround args
 
 -- Check if a formula is ground.
 isGroundFormula :: Formula -> Bool
@@ -148,7 +148,7 @@ substTerm x n t = case t of
   VarTerm v | v == x -> StdNameTerm n -- Replace variable with name
   VarTerm _ -> t
   StdNameTerm _ -> t
-  FuncApp f args -> FuncApp f (map (substTerm x n) args)
+  FuncAppTerm f args -> FuncAppTerm f (map (substTerm x n) args)
 
 -- Substitute a variable with a standard name in a formula.
 subst :: Variable -> StdName -> Formula -> Formula
@@ -260,5 +260,5 @@ freeVars f = case f of
       -- A standard name (e.g., n1) has no free variables, so returns an empty set.
       StdNameTerm _ -> Set.empty
       -- A function application (e.g., f(x,n1)) recursively computes free variables in its arguments.
-      FuncApp _ args -> Set.unions (map freeVarsTerm args)
+      FuncAppTerm _ args -> Set.unions (map freeVarsTerm args)
 \end{code}
