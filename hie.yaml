@@ -1,13 +1,13 @@
 cradle:
   stack:
     - path: "./lib"
-      component: "report:lib"
+      component: "KL:lib"
 
     - path: "./exec/Main.lhs"
-      component: "report:exe:myprogram"
+      component: "KL:exe:myprogram"
 
-    - path: "./exec/Paths_report.hs"
-      component: "report:exe:myprogram"
+    - path: "./exec/Paths_KL.hs"
+      component: "KL:exe:myprogram"
 
     - path: "./test"
-      component: "report:test:simpletests"
+      component: "KL:test:simpletests"
