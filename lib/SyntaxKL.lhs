@@ -4,7 +4,13 @@
 The syntax of the language $\mathcal{KL}$ is described in \textcite{Lokb} and inspired by Levesque's work (\cite{levesque1981}).
 The SyntaxKL module establishes the foundation for $\mathcal{KL}$'s syntax, defining the alphabet and grammar used in subsequent semantic evaluation.
 \begin{code}
+{-# LANGUAGE InstanceSigs #-}
+
+
 module SyntaxKL where
+
+import Test.QuickCheck
+
 \end{code}
 
 \textbf{Symbols of $\mathcal{KL}$}\\
@@ -75,6 +81,55 @@ implies f1 f2 = Or (Not f1) f2
 -- Biconditional as derived form
 iff :: Formula -> Formula -> Formula
 iff f1 f2 = Or (Not (Or f1 f2)) (Or (Not f1) f2)
+\end{code}
+
+
+-- TODO: work out acceptable sizes for generated artifacts 
+
+--Syntax
+\begin{code}
+
+
+instance Arbitrary StdName where
+  arbitrary:: Gen StdName
+  arbitrary = StdName . ("n" ++) . show <$> elements [1 .. 20]
+
+instance Arbitrary Variable where
+  arbitrary:: Gen Variable
+  arbitrary = Var . show <$> elements [1 .. 20]
+
+arbitraryUpperLetter :: Gen String
+arbitraryUpperLetter = (:[]) <$> elements ['A'..'Z']
+
+arbitraryLowerLetter :: Gen String
+arbitraryLowerLetter = (:[]) <$> elements ['a'..'z']
+
+instance Arbitrary Term where
+  arbitrary :: Gen Term
+  arbitrary = sized $ \n -> genTerm (min n 5) where 
+    genTerm 0 = oneof [VarTerm <$> arbitrary, 
+                       StdNameTerm <$> arbitrary]
+    genTerm n = oneof [VarTerm <$> arbitrary, 
+                       StdNameTerm <$> arbitrary, 
+                       FuncAppTerm <$> arbitraryLowerLetter 
+                                   <*> resize (n `div` 2) (listOf1 (genTerm (n `div` 2)))]
+
+instance Arbitrary Atom where
+  arbitrary :: Gen Atom
+  arbitrary = sized $ \n -> genAtom (min n 5) where 
+      genAtom :: Int -> Gen Atom
+      genAtom 0 = Pred <$> arbitraryLowerLetter <*> pure []
+      genAtom n = Pred <$> arbitraryLowerLetter <*> vectorOf n arbitrary
+
+instance Arbitrary Formula where
+  arbitrary :: Gen Formula 
+  arbitrary = sized $ \n -> genFormula (min n 5)   where
+    genFormula 0 = oneof [Atom <$> arbitrary, 
+                          Equal <$> arbitrary <*> arbitrary]
+    genFormula n = oneof [Not <$> genFormula (n `div` 2),
+                          Or <$> genFormula (n `div` 2) <*> genFormula (n `div` 2),
+                          Exists <$> arbitrary <*> genFormula (n `div` 2),
+                          K <$> genFormula (n `div` 2)]
 \end{code}
 
 We can now use this implementation of $\mathcal{KL}$'s syntax to implement the semantics.
