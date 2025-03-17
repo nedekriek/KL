@@ -45,10 +45,3 @@ tests:
       - QuickCheck
       - hspec
       
-  simpletests:
-    main: generatorstests.lhs
-    source-dirs: test
-    dependencies:
-      - KL
-      - QuickCheck
-      - hspec
