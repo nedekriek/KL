@@ -78,10 +78,16 @@ main = hspec $ do
             let formula = Or (Atom (Pred "P" [VarTerm $ Var "x"])) (Atom (Pred "Q" [VarTerm $ Var "y"]))
             show (subst (Var "x") (StdName "n1") formula) `shouldBe` show (Or (Atom (Pred "P" [StdNameTerm $ StdName "n1"])) (Atom (Pred "Q" [VarTerm $ Var "y"])))
         it "subst replaces the variable with the StdName in an Exists if the variable not in Exists scope" $ do
+            let formula = Atom (Pred "P" [VarTerm $ Var "x", VarTerm $ Var "y"])
+            -- replaces y with n2
+            show (subst (Var "y") (StdName "n2") formula) `shouldBe` show (Atom (Pred "P" [VarTerm $ Var "x", StdNameTerm $ StdName "n2"]))
+        it "subst replaces the variable with the StdName in an Exists if the variable not in Exists scope" $ do
             let formula = Exists (Var "x") (Atom (Pred "P" [VarTerm $ Var "x", VarTerm $ Var "y"]))
+            -- replaces y with n2
             show (subst (Var "y") (StdName "n2") formula) `shouldBe` show (Exists (Var "x") (Atom (Pred "P" [VarTerm $ Var "x", StdNameTerm $ StdName "n2"])))
         it "subst does not replace the variable with the StdName in Exists if the variable is in the Exists scope" $ do
             let formula = Exists (Var "x") (Atom (Pred "P" [VarTerm $ Var "x", VarTerm $ Var "y"]))
+            -- does not replace x with n2
             show (subst (Var "x") (StdName "n2") formula) `shouldBe` show formula
         it "subst replaces the variable with the StdName in a K formula" $ do
             let formula = K (Atom (Pred "P" [VarTerm $ Var "x"]))
