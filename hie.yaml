@@ -10,7 +10,4 @@ cradle:
       component: "KL:exe:myprogram"
 
     - path: "./test"
-      component: "KL:test:syntaxKLTests"
-
-    - path: "./test"
-      component: "KL:test:semanticsKLTests"
+      component: "KL:test:KL"
