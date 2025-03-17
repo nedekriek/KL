@@ -1,7 +1,11 @@
 \section{$\mathcal{KL}$: Syntax and Semantics}\label{sec:KLmodel}
 \insert{Syntax}
 
-\subsection{Semantics}
+\subsection{Semantics of $\mathcal{KL}$}\label{subsec:KLsemantics}
+$\mathcal{KL}$ is an epistemic extension of first-order logic designed to model knowledge and uncertainty, as detailed in \textcite{Lokb}.
+It introduces a knowledge operator $K$ and uses an infinite domain $\mathcal{N}$ of standard names to denote individuals. 
+Formulas are evaluated in world states: consistent valuations of atoms and terms, while epistemic states capture multiple possible worlds, reflecting epistemic possibilities.\\
+The semantics are implemented in the SemanticsKL module, which imports syntactic definitions from SyntaxKL and uses Haskell's Data.Map and Data.Set for efficient and consistent mappings.
 
 \begin{code}
 module SemanticsKL where
@@ -14,30 +18,75 @@ import qualified Data.Set as Set
 
 \end{code}
 
+\textbf{Worlds and Epistemic States}\\
+A WorldState represents a single possible world in $\mathcal{KL}$, mapping truth values to primitive atoms and standard names to primitive terms.
+An EpistemicState, defined as a set of WorldStates, models the set of worlds an agent considers possible, enabling the evaluation of the $K$ operator.
 
-
-We want a world state to assign values to primitive terms and atoms, so we create a new type WorldState. 
-An epistemic state is a set of possible world states.
 \begin{code}
+-- A single world state with valuations for atoms and terms
 data WorldState = WorldState
-  { atomValues :: Map Atom Bool        -- Truth values of ground atoms
-  , termValues :: Map Term StdName     -- Values of ground terms
-  } deriving (Show)
+ { atomValues :: Map Atom Bool,    -- Maps (primitive) atoms to truth values
+   termValues :: Map Term StdName   --Maps (primitive) terms to standard names
+  }  deriving (Eq, Ord, Show)
 
---Two WorldStates are equal if their atomValues and termValues maps are identical.
-instance Eq WorldState where
-  WorldState av1 tv1 == WorldState av2 tv2 = av1 == av2 && tv1 == tv2
-
---Order WorldStates first by atomValues, then by termValues if atomValues are equal.
-instance Ord WorldState where
-  compare (WorldState av1 tv1) (WorldState av2 tv2) =
-    case compare av1 av2 of
-      EQ -> compare tv1 tv2
-      ord -> ord
-
+-- A set of possible world states, modeling epistemic possibilities
 type EpistemicState = Set WorldState
+
+\end{code}
+\textbf{Constructing World States}
+We can construct world states by using mkWorldState, which builds a WorldState from lists of primitive atoms and terms. 
+While a WorldState is defined in terms of Atom and Term, we use mkWorldState to make sure that we can only have primitive atoms and primitive terms in the mapping.
+To be able to use primitive terms and atoms in other functions just as we would use atoms and terms (since primitive atoms and primitive terms are atoms and terms as well),
+we convert the constructors to those of regular terms and atoms.
+We then use the function checkDups to ensure that there are no contradictions in the world state (e.g., P(n1) mapped to both True and False), thus reinforcing the single-valuation principle (\cite{Lokb}, p. 24).
+mkWorldState then constructs maps for efficient lookup.
+
+\begin{code}
+
+-- Constructs a WorldState from primitive atoms and primitive terms
+mkWorldState :: [(PrimitiveAtom, Bool)] -> [(PrimitiveTerm, StdName)] -> WorldState
+mkWorldState atoms terms =
+  let convertAtom (PPred p ns, b) = (Pred p (map StdNameTerm ns), b)  -- Convert primitive atom to Atom
+      convertTerm (PStdNameTerm n, v) = (StdNameTerm n, v)  -- Convert primitive term to Term
+      convertTerm (PFuncApp f ns, v) = (FuncApp f (map StdNameTerm ns), v)
+      atomList = map convertAtom atoms
+      termList = map convertTerm terms
+  in WorldState (Map.fromList (checkDups atomList)) (Map.fromList (checkDups termList))
+
+-- Checks for contradictory mappings in a key-value list
+checkDups :: (Eq k, Show k, Eq v, Show v) => [(k, v)] -> [(k, v)]
+checkDups [] = []  -- Empty list is consistent
+checkDups ((k, v) : rest) =  -- Recursively checks each key k against the rest of the list.
+  case lookup k rest of  
+    Just v' | v /= v' -> error $ "Contradictory mapping for " ++ show k ++ ": " ++ show v ++ " vs " ++ show v' -- If k appears with a different value v', throws an error.
+    _ -> (k, v) : checkDups rest  -- Keep pair if no contradiction
+
 \end{code}
 
+Since we have decided to change the constructors of data of type PrimitiveAtom or PrimitiveTerm to those of Atom and Term, we have implemented two helper-functions to check if a Term or an Atom is primitive.
+This way, we can, if needed, check whether a given term or atom is primitive and then change the constructors appropriately.
+
+
+\begin{code}
+
+-- Checks if a term is primitive (contains only standard names)
+isPrimitiveTerm :: Term -> Bool
+isPrimitiveTerm (StdNameTerm _) = True
+isPrimitiveTerm (FuncApp _ args) = all isStdName args
+  where isStdName (StdNameTerm _) = True
+        isStdName _ = False
+isPrimitiveTerm _ = False
+
+-- Checks if an atom is primitive
+isPrimitiveAtom :: Atom -> Bool
+isPrimitiveAtom (Pred _ args) = all isStdName args
+  where isStdName (StdNameTerm _) = True
+        isStdName _ = False
+
+
+\end{code}
+
+\textbf{Term Evaluation}
 To evaluate a ground term in a world state, we define a function evalTerm that takes a WorldState and a Term and returns a StdName. 
 The idea is to map syntactic terms to their semantic values (standard names) in a given world state. 
 The function uses pattern matching to handle the three possible forms of Term:
@@ -55,22 +104,26 @@ In this case, no lookup or computation is needed.
 \item[3.] FuncApp f args\\
 If the term is a function application (e.g., f(n1,n2)), evalTerm evaluates the argument, by recursively computing the StdName values of each argument in args using evalTerm w. 
 Next, the ground term is constructed: It Builds a new FuncApp term where all arguments are standard names (wrapped in StdNameTerm), ensuring it's fully ground.
-We then look up the value by querying the termValues map in the world state w for the denotation of this ground term, defaulting to StdName "n1" if not found.
+We then look up the value by querying the termValues map in the world state w for the denotation of this ground term, erroring on undefined terms.
 \end{itemize}
 
 \begin{code}
+-- Evaluates a ground term to its standard name in a WorldState
 evalTerm :: WorldState -> Term -> StdName
 evalTerm w t = case t of
-  VarTerm _ -> error "evalTerm: Variables must be substituted"
-  StdNameTerm n -> n
+  VarTerm _ -> error "evalTerm: Variables must be substituted"  -- Variables are not ground
+  StdNameTerm n -> n   -- Standard names denote themselves
   FuncApp f args ->
-    let argValues = map (evalTerm w) args
-        groundTerm = FuncApp f (map StdNameTerm argValues)
-    in Map.findWithDefault (StdName "n1") groundTerm (termValues w) -- Default for undefined, use "n1"
+    let argValues = map (evalTerm w) args   -- Recursively evaluate arguments
+        groundTerm = FuncApp f (map StdNameTerm argValues)   -- Construct ground term
+    in case Map.lookup groundTerm (termValues w) of
+        Just n -> n   -- Found in termValues
+        Nothing -> error $ "evalTerm: Undefined ground term " ++ show groundTerm   -- Error if undefined
 \end{code}
 
-Next, we want to define a satisfies function. For this, we need a helper-function that checks whether a term or formula is ground. 
-We also need a helper-function that substitutes a variable with a standard name in a term  for the exists-case.
+\textbf{Groundness and Substitution}\\
+To support formula evaluation, isGround and isGroundFormula check for the absence of variables, while substTerm and subst perform substitution of variables with standard names, respecting quantifier scope to avoid capture.
+We need these functions to be able to define a function that checks whether a formula is satisfiable in a worldstate and epistemic state.
 
 \begin{code}
 -- Check if a term is ground (contains no variables).
@@ -93,7 +146,7 @@ isGroundFormula f = case f of
 -- Substitute a variable with a standard name in a term.
 substTerm :: Variable -> StdName -> Term -> Term
 substTerm x n t = case t of
-  VarTerm v | v == x -> StdNameTerm n
+  VarTerm v | v == x -> StdNameTerm n -- Replace variable with name
   VarTerm _ -> t
   StdNameTerm _ -> t
   FuncApp f args -> FuncApp f (map (substTerm x n) args)
@@ -109,11 +162,14 @@ subst x n formula = case formula of
              | otherwise -> Exists y (subst x n f)
   K f -> K (subst x n f)
 
-
 \end{code}
+
+
+\textbf{Model and Satisfiability}
 
 Since we want to check for satisfiability in a model, we want to make the model explicit:
 \begin{code}
+-- Represents a model with an actual world, epistemic state, and domain
 data Model = Model
   { actualWorld :: WorldState      -- The actual world state
   , epistemicState :: EpistemicState -- Set of possible world states
@@ -121,18 +177,21 @@ data Model = Model
   } deriving (Show)
 \end{code}
 
-With the helper-functions and the new type Model, we can now implement the satisfiesModel function as follows:
+A Model encapsulates an actual world, an epistemic state, and a domain, enabling the evaluation of formulas with the $K$operator. 
+satisfiesModel implements $\mathcal{KL}$'s satisfaction relation, checking truth across worlds.
+
 \begin{code}
+-- Checks if a formula is satisfied in a model
 satisfiesModel :: Model -> Formula -> Bool
 satisfiesModel m = satisfies (epistemicState m) (actualWorld m)
   where
     satisfies e w formula = case formula of
       Atom (Pred p terms) ->
         if all isGround terms
-          then Map.findWithDefault False (Pred p terms) (atomValues w)
+          then Map.findWithDefault False (Pred p terms) (atomValues w)   -- Default False for undefined atoms
           else error "Non-ground atom in satisfies!"
       Equal t1 t2 ->
-        if isGround t1 && isGround t2
+        if isGround t1 && isGround t2   -- Equality of denotations
           then evalTerm w t1 == evalTerm w t2
           else error "Non-ground equality in satisfies!"
       Not f ->
@@ -148,8 +207,13 @@ satisfiesModel m = satisfies (epistemicState m) (actualWorld m)
 
 \end{code}
 
-Building on this we can implement a function checkModel that checks whether a formula holds in a given model:
+\textbf{Grounding and Model Checking}\\
+
+Building on this we can implement a function checkModel that checks whether a formula holds in a given model.
+checkModel ensures a formula holds by grounding it with all possible substitutions of free variables, using groundFormula and freeVars to identify and replace free variables systematically.
+
 \begin{code}
+-- Checks if a formula holds in a model by grounding it
 checkModel :: Model -> Formula -> Bool
 checkModel m phi = all (satisfiesModel m) (groundFormula phi (domain m))
 \end{code}
@@ -159,6 +223,8 @@ Since we have implemented satisfiesModel such that it assumes ground formulas or
 We implement groundFormula as follows:
 
 \begin{code}
+
+-- Generates all ground instances of a formula
 groundFormula :: Formula -> Set StdName -> [Formula]
 groundFormula f dom = do
   -- converts the set of free variables in f to a list
@@ -169,11 +235,13 @@ groundFormula f dom = do
   --iteratively substitute each variable v with a standard name n in the formula
   return $ foldl (\acc (v, n) -> subst v n acc) f (zip fvs subs)
 \end{code}
+
 This function takes a formula and a domain of standard names and returns a list of all possible ground instances of the formula by substituting its free variables with elements from the domain.
 We use a function freeVars that identifies all the variables in a formula that need grounding or substitution. 
 It takes a formula and returns a Set Variable containing all the free variables in that formula:
 
 \begin{code}
+-- Collects free variables in a formula
 freeVars :: Formula -> Set Variable
 freeVars f = case f of
   --Collects free variables from all terms in the predicate
