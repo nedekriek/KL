@@ -1,5 +1,4 @@
 \section{$\mathcal{KL}$: Syntax and Semantics}\label{sec:KLmodel}
-\insert{Syntax}
 
 \subsection{Semantics of $\mathcal{KL}$}\label{subsec:KLsemantics}
 $\mathcal{KL}$ is an epistemic extension of first-order logic designed to model knowledge and uncertainty, as detailed in \textcite{Lokb}.
@@ -33,7 +32,7 @@ data WorldState = WorldState
 type EpistemicState = Set WorldState
 
 \end{code}
-\textbf{Constructing World States}
+\textbf{Constructing World States}\\
 We can construct world states by using mkWorldState, which builds a WorldState from lists of primitive atoms and terms. 
 While a WorldState is defined in terms of Atom and Term, we use mkWorldState to make sure that we can only have primitive atoms and primitive terms in the mapping.
 To be able to use primitive terms and atoms in other functions just as we would use atoms and terms (since primitive atoms and primitive terms are atoms and terms as well),
@@ -86,7 +85,7 @@ isPrimitiveAtom (Pred _ args) = all isStdName args
 
 \end{code}
 
-\textbf{Term Evaluation}
+\textbf{Term Evaluation}\\
 To evaluate a ground term in a world state, we define a function evalTerm that takes a WorldState and a Term and returns a StdName. 
 The idea is to map syntactic terms to their semantic values (standard names) in a given world state. 
 The function uses pattern matching to handle the three possible forms of Term:
@@ -164,8 +163,7 @@ subst x n formula = case formula of
 
 \end{code}
 
-
-\textbf{Model and Satisfiability}
+\textbf{Model and Satisfiability}\\
 
 Since we want to check for satisfiability in a model, we want to make the model explicit:
 \begin{code}
@@ -208,7 +206,6 @@ satisfiesModel m = satisfies (epistemicState m) (actualWorld m)
 \end{code}
 
 \textbf{Grounding and Model Checking}\\
-
 Building on this we can implement a function checkModel that checks whether a formula holds in a given model.
 checkModel ensures a formula holds by grounding it with all possible substitutions of free variables, using groundFormula and freeVars to identify and replace free variables systematically.
 

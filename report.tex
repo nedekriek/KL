@@ -1,5 +1,6 @@
 \documentclass[12pt,a4paper]{article}
 \input{latexmacros.tex}
+\addbibresource{references.bib}
 
 \title{My Report}
 \author{Me}
@@ -28,9 +29,11 @@ We use the listings package to typeset Haskell source code nicely.
 
 \input{Howto.tex}
 
-\input{lib/Basics.lhs}
+\input{lib/SyntaxKL.lhs}
 
 \input{lib/SemanticsKL.lhs}
+
+\input{lib/Tableau.lhs}
 
 \input{exec/Main.lhs}
 

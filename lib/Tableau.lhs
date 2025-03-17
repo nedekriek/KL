@@ -82,8 +82,7 @@ expandKNot f w branch = Branch (Node (Not f) (1 + maxWorld) : nodes branch) (par
   where maxWorld = maximum (0 : [w' | Node _ w' <- nodes branch])
 \end{code}
 
-\textbf{Branch Clodure}
-
+\textbf{Branch Clodure}\\
 isClosed determines whether a tableau branch is contradictory (closed) or consistent (open). 
 A branch closes if it contains an explicit contradiction, meaning no model can satisfy all the formulas in that branch. 
 If a branch is not closed, it is potentially part of a satisfiable interpretation.
@@ -109,8 +108,7 @@ isClosed b =
   in atomContra || eqContra  -- True if any contradiction exists
 \end{code}
 
-\textbf{Tableau Expasion}
-
+\textbf{Tableau Expasion}\\
 Next, we have the function expandTableau. 
 expandTableau iteratively applies tableau rules to expand all branches, determining if any remain open (indicating satisfiability). 
 It returns Just branches if at least one branch is fully expanded and open, and Nothing if all branches close.
@@ -132,7 +130,6 @@ expandTableau branches
 \end{code}
 
 \textbf{Top-Level Checkers}\\
-
 As top-level function we use isSatisfiable and isValid. 
 isSatisfiable tests whether a formula $f$ has a satisfying model. 
 It starts the tableau process and interprets the result. 
