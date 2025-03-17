@@ -7,6 +7,8 @@ Formulas are evaluated in world states: consistent valuations of atoms and terms
 The semantics are implemented in the SemanticsKL module, which imports syntactic definitions from SyntaxKL and uses Haskell's Data.Map and Data.Set for efficient and consistent mappings.
 
 \begin{code}
+{-# LANGUAGE InstanceSigs #-}
+
 module SemanticsKL where
 
 import SyntaxKL 
@@ -14,6 +16,9 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
+
+import Test.QuickCheck
+
 
 \end{code}
 
@@ -261,4 +266,17 @@ freeVars f = case f of
       StdNameTerm _ -> Set.empty
       -- A function application (e.g., f(x,n1)) recursively computes free variables in its arguments.
       FuncAppTerm _ args -> Set.unions (map freeVarsTerm args)
+\end{code}
+
+-- TODO: work out acceptable sizes for generated artifacts 
+
+-- Semantics
+\begin{code}
+instance Arbitrary WorldState where
+  arbitrary :: Gen WorldState
+  arbitrary = WorldState <$> arbitrary <*> arbitrary
+
+instance Arbitrary Model where 
+  arbitrary:: Gen Model 
+  arbitrary = Model <$> arbitrary <*> arbitrary <*> arbitrary
 \end{code}

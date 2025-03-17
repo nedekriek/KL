@@ -92,17 +92,20 @@ iff f1 f2 = Or (Not (Or f1 f2)) (Or (Not f1) f2)
 
 instance Arbitrary StdName where
   arbitrary:: Gen StdName
-  arbitrary = StdName . ("n" ++) . show <$> elements [1 .. 20]
+  arbitrary = StdName . ("n" ++) . show <$> elements [1 .. 20::Int]
 
 instance Arbitrary Variable where
   arbitrary:: Gen Variable
-  arbitrary = Var . show <$> elements [1 .. 20]
+  arbitrary = Var . show <$> elements [1 .. 20::Int]
 
-arbitraryUpperLetter :: Gen String
-arbitraryUpperLetter = (:[]) <$> elements ['A'..'Z']
+-- Generator for arbitrary upper case letter
+genUpperLetter :: Gen String
+genUpperLetter = (:[]) <$> elements ['A'..'Z']
 
-arbitraryLowerLetter :: Gen String
-arbitraryLowerLetter = (:[]) <$> elements ['a'..'z']
+-- Generator for arbitrary lower case letter
+genLowerLetter :: Gen String
+genLowerLetter = (:[]) <$> elements ['a'..'z']
+
 
 instance Arbitrary Term where
   arbitrary :: Gen Term
@@ -111,15 +114,15 @@ instance Arbitrary Term where
                        StdNameTerm <$> arbitrary]
     genTerm n = oneof [VarTerm <$> arbitrary, 
                        StdNameTerm <$> arbitrary, 
-                       FuncAppTerm <$> arbitraryLowerLetter 
+                       FuncAppTerm <$> genLowerLetter 
                                    <*> resize (n `div` 2) (listOf1 (genTerm (n `div` 2)))]
 
 instance Arbitrary Atom where
   arbitrary :: Gen Atom
   arbitrary = sized $ \n -> genAtom (min n 5) where 
       genAtom :: Int -> Gen Atom
-      genAtom 0 = Pred <$> arbitraryLowerLetter <*> pure []
-      genAtom n = Pred <$> arbitraryLowerLetter <*> vectorOf n arbitrary
+      genAtom 0 = Pred <$> genUpperLetter <*> pure []
+      genAtom n = Pred <$> genUpperLetter <*> vectorOf n arbitrary
 
 instance Arbitrary Formula where
   arbitrary :: Gen Formula 
