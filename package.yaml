@@ -29,19 +29,21 @@ executables:
       - KL
 
 tests:
-  syntaxkltests:
+  syntaxKLTests:
     main: syntaxKLTests.lhs
     source-dirs: test
     dependencies:
       - KL
-      - QuickCheck
+      - base
       - hspec
+      - QuickCheck
 
-  semanticskltests:
+  semanticsKLTests:
     main: semanticsKLTests.lhs
     source-dirs: test
     dependencies:
       - KL
-      - QuickCheck
+      - base
       - hspec
+      - QuickCheck
       

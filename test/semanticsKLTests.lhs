@@ -10,6 +10,7 @@ import SyntaxKL
 import Generators
 
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 
 import Test.Hspec
 import Test.QuickCheck
@@ -87,11 +88,10 @@ main = hspec $ do
             show (subst (Var "x") (StdName "n2") formula) `shouldBe` show (K (Atom (Pred "P" [StdNameTerm $ StdName "n2"])))
     describe "satisfiesModel" $ do 
         let x = Var "x"
-            xTerm = VarTerm $ Var "x"
             n1 = StdNameTerm $ StdName "n1"
             n2 = StdNameTerm $ StdName "n2"
             p = Atom (Pred "P" [])
-            px = Atom (Pred "P" [xTerm])
+            px = Atom (Pred "P" [VarTerm x])
             py = Atom (Pred "P" [VarTerm $ Var "y"])
             pt = Atom (Pred "P" [n1])
         context "satisfiesModel satisfies validities when atoms are ground" $ do
@@ -104,16 +104,13 @@ main = hspec $ do
             it "satisfiesModel satisfies t=t" $ do
                 property $ \m -> satisfiesModel m (Equal n1 n1) `shouldBe` True
             it "satisfiesModel errors for x=x" $ do
-                property $ \m -> evaluate (satisfiesModel m (Equal xTerm xTerm)) `shouldThrow` anyException
+                property $ \m -> evaluate (satisfiesModel m (Equal (VarTerm x) (VarTerm x))) `shouldThrow` anyException
             it "satisfiesModel satisfies ForAll x (P(x) -> P(x))" $ do 
                 property $ \m -> satisfiesModel m (Not (Exists x (Not (Or (Not px) px)))) `shouldBe` True
             it "satisfiesModel satisfies ForALL x (P(x) -> ~~ P(x))" $ do 
                 property $ \m -> satisfiesModel m (Not (Exists x (Not (Or (Not px) (Not (Not px))))) ) `shouldBe` True
             it "satisfiesModel satisfies ForAll x (P(x) -> Exists y P(y))" $ do 
                 property $ \m -> satisfiesModel m (Not (Exists x (Not (Or (Not px) (Exists (Var "y") py)) ))) `shouldBe` True
-            -- Currently failing need someone else to double check
-            --it "satisfiesModel satisfies Exits x (P(x) -> ForAll y P(y)) " $ do
-            --    property $ \m -> satisfiesModel m (Exists x (Or (Not px) (Not (Exists (Var "y") (Not py))))) `shouldBe` True
             it "satisfiesModel satisfies ((n1 = n2) -> K (n1 = n2)" $ do
                 property $ \m -> satisfiesModel m (Or (Not (Equal n1 n2)) (K (Equal n1 n2))) `shouldBe` True
             it "satisfiesModel satisfies ((n1 /= n2) -> K (n1 /= n2)" $ do
@@ -126,11 +123,37 @@ main = hspec $ do
             it "satisfiesModel does not satisfy ~(P v ~P)" $ do
                 property $ \m -> satisfiesModel m (Not (Or p (Not p))) `shouldBe` False
             it "satisfiesModel does not satisfy (Exists x (x /= x))" $ do
-                property $ \m -> satisfiesModel m (Exists x (Not (Equal xTerm xTerm))) `shouldBe` False
-    -- Currently failing need someone else to double check suspect issue with test
-    --describe "groundFormula" $ do
-    --    it "groundFormula returns a ground formula (dependant on isGroundFormula passing all tests)" $ do
-    --        property $ \f -> forAll genStdNameSet $ \s -> all isGroundFormula (groundFormula (f :: Formula) s)
+                property $ \m -> satisfiesModel m (Exists x (Not (Equal (VarTerm x) (VarTerm x)))) `shouldBe` False
+    describe "freeVars" $ do
+            let x = Var "x"
+                y = Var "y"
+                n1 = StdNameTerm $ StdName "n1"
+                n2 = StdNameTerm $ StdName "n2"
+                px = Atom (Pred "P" [VarTerm x])
+                py = Atom (Pred "P" [VarTerm y])
+                pf = Atom (Pred "P" [FuncAppTerm "f" [VarTerm x], FuncAppTerm "g" [VarTerm y]])
+            it "freeVars returns nothing if no free var in formula" $ do
+                let f = Exists x (Or (Or (Not px) (Exists y py)) (Equal n1 n2))
+                freeVars f `shouldBe` Set.fromList []
+            it "freeVars returns the free variables in a simple formula" $ do
+                let f = (Or (Or (Not px) py) (Equal n1 n2))
+                freeVars f `shouldBe` Set.fromList [x, y]
+            it "freeVars returns the free variables in a complex formula" $ do
+                let f = (Exists x (Or (Or (Not px) pf) (Equal n1 n2)))
+                freeVars f `shouldBe` Set.fromList [x,y]
+    -- Currently failing 
+    describe "groundFormula" $ do
+        it "groundFormula returns a ground formula (dependant on isGroundFormula passing all tests)" $ do
+            property $ \f -> forAll genStdNameSet $ \s -> all isGroundFormula (groundFormula (f :: Formula) s)
+    describe "checkModel" $ do
+        let x = Var "x"
+            px = Atom (Pred "P" [VarTerm x])
+        context "checkModel satisfies validities when atoms are unground" $ do
+            it "checkModel errors for P(x) -> ~~ P(x)" $ do
+                property $ \m -> checkModel m (Or (Not px) (Not (Not px))) `shouldBe` True 
+            it "checkModel errors for x=x" $ do
+                property $ \m -> checkModel m (Equal (VarTerm x) (VarTerm x)) `shouldBe` True 
+            
 \end{code}
  
 

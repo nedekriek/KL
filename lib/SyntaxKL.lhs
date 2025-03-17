@@ -121,7 +121,6 @@ instance Arbitrary Atom where
   arbitrary :: Gen Atom
   arbitrary = sized $ \n -> genAtom (min n 5) where 
       genAtom :: Int -> Gen Atom
-      genAtom 0 = Pred <$> genUpperLetter <*> pure []
       genAtom n = Pred <$> genUpperLetter <*> vectorOf n arbitrary
 
 instance Arbitrary Formula where
