@@ -30,7 +30,15 @@ executables:
 
 tests:
   syntaxkltests:
-    main: syntaxkltests.lhs
+    main: syntaxKLTests.lhs
+    source-dirs: test
+    dependencies:
+      - KL
+      - QuickCheck
+      - hspec
+
+  semanticskltests:
+    main: semanticsKLTests.lhs
     source-dirs: test
     dependencies:
       - KL
@@ -38,7 +46,7 @@ tests:
       - hspec
       
   simpletests:
-    main: simpletests.lhs
+    main: generatorstests.lhs
     source-dirs: test
     dependencies:
       - KL
