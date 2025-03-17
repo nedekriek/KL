@@ -1,4 +1,4 @@
-\sec{Comparing KL and Epistemic Logic}
+\section{Comparing KL and Epistemic Logic}
 \begin{code}
 module Translator where
 
@@ -19,6 +19,8 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import GHC.Integer (bitInteger)
+
+
 --import HW1 (Form)
 
 -- we need a few definitions that were in Lou's original ModelKL, but are not in 
@@ -58,28 +60,11 @@ Three things to note:
 \subsection{Syntax and Semantics of SEL}
 
 \subsubsection{Mathematical Description of the Syntax and Semantics of SEL}
+\subsubsubsection{Syntax}
+\subsubsubsection{Semantics}
 This is just basic modal logic, as we know it.
 \subsubsection{Implementation}
-
-To represent Kripke Models, we will use the types from HW 2, with a twist: we let
-the worlds be WorldStates, as defined in "Semantics". This simplifies the translation
-functions, and doesn't matter mathematically, as the internal constitution
-of the worlds in a Kripke Model is mathematically irrelevant.
-
-\subsection{IntKripkeModel}
-\begin{code}
-
-type IntWorld = Integer
-type IntUniverse = [IntWorld]
-type IntValuation = IntWorld -> [Proposition]
-type IntRelation = [(IntWorld, IntWorld)]
-data IntKripkeModel = IntKrM IntUniverse IntValuation IntRelation
-
-\end{code}
-
-\subsection{KripkeModel}
-
-Syntax:
+\subsubsubsection{Syntax}
 
 \begin{code}
 data ModForm = P Proposition
@@ -93,11 +78,22 @@ disj :: ModForm -> ModForm -> ModForm
 disj f g = Neg (Con (Neg f) (Neg g))
 
 impl :: ModForm -> ModForm -> ModForm
-impl f g = disj (Neg f) g
+impl f = disj (Neg f)
 \end{code}
 
-Semantics:
+This is taken from HW2, with one modification: we use "Neg" instead of "Not" as a type constructor 
+for negated modal formula, since "Not" is already being used as a type constructor for KL-formulas 
+(see "SyntaxKL" for details).
+
+\subsubsubsection{Semantics}
+
+To represent Kripke Models, we will use the types from HW 2, with a twist: we let
+the worlds be WorldStates, as defined in "Semantics". This simplifies the translation
+functions, and doesn't matter mathematically, as the internal constitution
+of the worlds in a Kripke Model is mathematically irrelevant.
+
 \begin{code}
+--definition of models
 type World = WorldState
 type Universe = [World]
 type Proposition = Int
@@ -105,22 +101,45 @@ type Proposition = Int
 type Valuation = World -> [Proposition]
 type Relation = [(World,World)]
 
-data KripkeModel = KrM Universe Valuation Relation
+data KripkeModel = KrM 
+   { universe :: Universe
+   , valuation :: Valuation 
+   , relation :: Relation }
 
+--definition of truth for modal formulas
 (!) :: Relation -> World -> [World]
 (!) r w = map snd $ filter ((==) w . fst) r
+
+--truth at a world
+makesTrue :: (KripkeModel,World) -> ModForm -> Bool
+makesTrue (KrM _ v _, w) (P k)     = k `elem` v w
+makesTrue (m,w)          (Neg f)   = not (makesTrue (m,w) f)
+makesTrue (m,w)          (Con f g) = makesTrue (m,w) f && makesTrue (m,w) g
+makesTrue (KrM u v r, w) (Dia f)   = any (\w' -> makesTrue (KrM u v r, w') f) (r ! w)
+makesTrue (KrM u v r, w) (Box f)   = all (\w' -> makesTrue (KrM u v r,w') f) (r ! w)
+
+--truth in a model
+trueEverywhere :: KripkeModel -> ModForm -> Bool
+trueEverywhere (KrM x y z) f = all (\w -> makesTrue (KrM x y z, w) f) x
 \end{code}
 
-To enable easier specification of models, and easier printing, we also define a Kripke Model
-where worlds are of type Int:
+Sometimes, it will still be useful to represent Kripke Models in the old way,
+using Integers as worlds. We therefore define an additional type IntKripkeModel:
+
+\begin{code}
 type IntWorld = Integer
 type IntUniverse = [IntWorld]
 type IntValuation = IntWorld -> [Proposition]
 type IntRelation = [(IntWorld, IntWorld)]
 data IntKripkeModel = IntKrM IntUniverse IntValuation IntRelation
 \end{code}
-We define a function to convert from KripkeModels to IntKripkeModels:
+
+Sometime it will also be usefuel to convert between KripkeModels and IntKripkeModels. 
+To enable this, we provide the following functions:
+
 \begin{code}
+
+--KripkeModel to IntKripkeModel
 translateKrToKrInt :: KripkeModel -> IntKripkeModel
 translateKrToKrInt (KrM u v r) = IntKrM u' v' r' where
    ur = nub u -- the function first gets rid of duplicate worlds in the model
@@ -131,7 +150,56 @@ translateKrToKrInt (KrM u v r) = IntKrM u' v' r' where
    r' = [(worldStateToInt ur w, worldStateToInt ur w') | (w,w') <- r] where
       worldStateToInt :: Universe -> WorldState -> Integer
       worldStateToInt uni w = toInteger $ fromJust $ elemIndex w uni 
-      
+
+convertToWorldStateModel :: IntKripkeModel -> KripkeModel
+convertToWorldStateModel (IntKrM intUniv intVal intRel) =
+  let worldStates = map makeWorldState intUniv
+      worldToInt :: WorldState -> Integer
+      worldToInt ws = case find (\(i, w) -> w == ws) (zip intUniv worldStates) of
+                        Just (i, _) -> i
+                        Nothing -> error "WorldState not found in universe"
+      newVal :: Valuation
+      newVal ws = intVal (worldToInt ws)
+      newRel :: Relation
+      newRel = [(makeWorldState i, makeWorldState j) | (i, j) <- intRel]
+  in KrM worldStates newVal newRel
+
+makeWorldState :: Integer -> WorldState
+makeWorldState n =
+  let uniqueAtom = Pred "WorldID" [StdNameTerm (StdName (show n))]
+  in mkWorldState [(uniqueAtom, True)] []
+
+\end{code}
+
+Note to self: Some helper functions for Milan's stuff -> Could it make sense to 
+put them into another section, in the place where they are needed?
+\begin{code}
+
+-- Helper functions as provided
+uniqueProps :: ModForm -> [Proposition]
+uniqueProps f = nub (propsIn f)
+  where
+    propsIn (P k)       = [k]
+    propsIn (Neg g)     = propsIn g
+    propsIn (Con g h)   = propsIn g ++ propsIn h
+    propsIn (Box g)     = propsIn g
+    propsIn (Dia g)     = propsIn g
+
+-- Generate all possible valuations explicitly
+allValuations :: [World] -> [Proposition] -> [Valuation]
+allValuations univ props = 
+  let subsetsP = subsequences props
+      assignToWorlds = sequence (replicate (length univ) subsetsP)
+  in [ \w -> let idx = length (takeWhile (/= w) univ)
+             in if idx < length univ then assignToWorlds !! idx else []
+     | assignToWorlds <- sequence (replicate (length univ) subsetsP) ]
+
+-- Corrected isValid
+isValidKr :: ModForm -> KripkeModel -> Bool
+isValidKr f (KrM univ _ rel) = 
+  let props = uniqueProps f
+      valuations = allValuations univ props
+  in all (\v -> all (\w -> makesTrue (KrM univ v rel, w) f) univ) valuations
 \end{code}
 
 To be able to print Models, let's define a Show instance for IntKripkeModels, and for KripkeModels:
@@ -140,7 +208,8 @@ To be able to print Models, let's define a Show instance for IntKripkeModels, an
 -- we shouldn't really call this a Show instance, but instead something like a print function
 instance Show IntKripkeModel where
    show (IntKrM uni val rel) = "IntKrM\n" ++ show uni ++ "\n" ++ show [(x, val x) | x <- uni ] ++ "\n" ++ show rel
--- we define a Show Instance for KripkeModels, which just shows the KripkeModel, converted to an
+
+-- we also define a Show Instance for KripkeModels, which just shows the KripkeModel, converted to an
 -- IntKripkeModel
 instance Show KripkeModel where
    show m = show $ translateKrToKrInt m
@@ -170,18 +239,91 @@ instance Eq IntKripkeModel where
 -- via converting to IntKripkeModels.
 \end{code}
 
-All this is taken from HW 2, with only two slight modifications:
-\begin{enumerate}
-\item We use WorldStates (defined in the module "Semantics") as worlds in the Kripke Model.
-\item We use "Neg" instead of "Not" as a type constructor for negated modal formula, since
-"Not" is already being used as a type constructor for KL-formulas (see "Syntax" for details).
-\end{enumerate}
-
 \subsection{Translation functions: KL to Kripke}
 \subsubsection{Desiderata}
-This section should answer the questions:
-- What are the types of the translation functions?
-- What constraints do we want our translation functions to satisfy?
+First, what are the types of our translation functions? As mentioned at the beginning,
+we need to bear several things in mind when deciding this question:
+\begin{enumerate}
+    \item The language of KL is predicate logic, plus a knowledge operator.
+    The language of SEL, on the other hand, is propositional logic, plus
+    a knowledge operator. So we can only translate from a fragment of 
+    the language of KL to SEL.
+    \item Kripke models are much more general than KL models. So we can only
+    translate from a fragment of the set of Kripke models into KL models.
+    \item In Kripke models, there is such a thing as evaluating a formula 
+    at a specific world, whereas this has no equivalent in KL models. In fact, 
+    evaluating a formula in a KL model is much more closely related to 
+    evaluating a formula at a world in a Kripke model, than to evaluating it
+    with respect to a whole Kripke model.
+\end{enumerate}
+
+In our implementation, to do justice to the the fact that translation functions
+can only sensibly be defined for \emph{some} Kripke models, and \emph{some} 
+KL formulas, we use the Maybe monad provided by Haskell.
+
+To do justice to the fact that evaluating in a KL model is more like evaluating a 
+formula at a specific world in a Kripke Model, than like evaluating a formula with
+respect to a whole Kripke model, we translate from pairs of Kripke models and worlds 
+to KL models, rather than just from Kripke models to KL models. 
+
+Thus, these are the types of our translation functions:
+%I always wrote down, first, the type of the mathematical function, and then,
+%the Haskell type. But maybe that's unnecessary, and just the Haskell type would suffice?
+\begin{enumerate}
+\item A partial translation function $ translateFormToKr : \mathcal{L}_{KL} \to \mathcal{L}_{SEL} $.
+
+In Haskell: 
+\begin{verbatim}
+translateFormToKr :: Formula -> Maybe ModForm
+\end{verbatim}
+
+\item A translation function $ translateFormToKL : \mathcal{L}_{SEL} \to \mathcal{L}_{KL} $.
+
+In Haskell: 
+\begin{verbatim}
+translateFormToKr :: Formula -> Maybe ModForm
+\end{verbatim}
+
+\item A translation function $ translateModToKr : \mathcal{E} \to \mathcal{Kr} $, 
+where $ \mathcal{E}$ is the set of epistemic models, and $ \mathcal{Kr} $ is the 
+set of Kripke models.
+
+In Haskell: 
+\begin{verbatim}
+translateModToKr :: Model -> KripkeModel
+\end{verbatim}
+
+\item A partial translation function $ kripkeToKL : \mathcal {KrP} \to \mathcal{E} $,
+where $ \mathcal{KrP} $ is the set of pointed Kripke models.
+
+In Haskell:
+\begin{verbatim}
+kripkeToKL :: KripkeModel -> WorldState -> Maybe Model
+\end{verbatim}
+\end{enumerate}
+
+What constraints do we want our translation functions to satisfy? We propose that reasonable
+translation functions should at least satisfy these constraints: for any KL model 
+\begin{verbatim} Model w e d \end{verbatim}, any translatable KL formula \begin{verbatim} f \end{verbatim},
+any translatable Kripke model \begin{verbatim} KrM uni val rel \end{verbatim}, and any SEL formula
+\begin{verbatim} g \end{verbatim},
+\begin{enumerate}
+%truth values should be preserved
+\item \begin{verbatim} Model w e d |= f \end{verbatim} iff
+\begin{verbatim} (translateModToKr (Model w e d)) w |= fromJust (translateFormToKr f )\end{verbatim}
+\item \begin{verbatim} (KrM uni val rel) w |= g \end{verbatim} iff 
+\begin{verbatim} fromJust (kripkeToKL (KrM uni val rel) w) |= translateFormToKL g\end{verbatim}
+%Translating formulas back and forth shouldn't change anything:
+\item \begin{verbatim} fromJust (translateFormToKL (translateFormToKr f )) = f\end{verbatim}
+\item \begin{verbatim} translateFormToKr (fromJust (translateFormToKL g )) = g\end{verbatim}
+%Translating models back and forth shouldn't change anything:
+\item \begin{verbatim} fromJust (kripkeToKL (translateModToKr (Model w e d)) w) = Model w e d\end{verbatim}
+\item \begin{verbatim} translateModToKr ( fromJust (kripkeToKL (KrM uni val rel) w)) = KrM uni val rel \end{verbatim}
+
+\end{enumerate}
+
+
+
 \subsubsection{Mathematical description of the translation functions}
 - definitions of the functions in terms of the mathematical description of KL models
 (this is provided by Lou), and the mathematical description of Kripke Models (from the
@@ -212,6 +354,7 @@ translateModToKr (Model w e d) = KrM (nub (w:(Set.toList e))) val (nub rel) wher
    val = trueAtomicPropsAt
    rel = [(v, v') | v <- Set.toList e, v' <- Set.toList e] ++ [(w,v) | v <- Set.toList e]
 
+--the next three are helper functions:
 atomicPropsKL :: [Atom]
 atomicPropsKL = [Pred "P" [StdNameTerm n] | n <- standardNames] 
 
@@ -291,57 +434,8 @@ isTransitive krm
 
 \end{code}
 
+
 \subsection{Tests}
-
-\subsection{Tests for Kripke to KL}
-
-\begin{code}
-
-modelKL3 :: Model
-modelKL3 = fromJust(kripkeToKL exampleModel3 (makeWorldState 30))
-
-modelKL4 :: Model
-modelKL4 = fromJust(kripkeToKL exampleModel4 (makeWorldState 40))
-
-modelKL5 :: Model
-modelKL5 = fromJust(kripkeToKL exampleModel5 (makeWorldState 50))
-
-modelKL6 :: Model
-modelKL6 = fromJust(kripkeToKL exampleModel6 (makeWorldState 60))
-
-modelKL7 :: Model
-modelKL7 = fromJust(kripkeToKL exampleModel7 (makeWorldState 70))
-
-modelKL7b :: Model
-modelKL7b = fromJust(kripkeToKL exampleModel7 (makeWorldState 71))
-
-ref :: Formula
-ref = translateFormToKL (impl (Box (P 1)) (P 1))
-
-conTest :: Formula
-conTest = translateFormToKL (Con (P 1) (P 2))
-
-boxTest :: Formula
-boxTest = translateFormToKL (Box (P 1))
-
-diaTest :: Formula
-diaTest = translateFormToKL (Dia (P 1))
-
-negTest :: Formula
-negTest = translateFormToKL (Neg (P 1))
-
-test7 :: Bool
-test7 = checkModel modelKL7 (translateFormToKL (Con (P 2) (Neg (P 2))))
-
-testref :: Bool
-testref = checkModel modelKL7 ref
-
-testrefb :: Bool
-testrefb = checkModel modelKL7b ref
-
-
-\end{code}
-
 
 TODO: Now we write some tests to see whether these actually work.
 
@@ -454,6 +548,256 @@ test3 = translateKrToKrInt (translateModToKr model1) == translateKrToKrInt (tran
 -- “inverses” in the right way
 \end{code}
 
+MILAN'S EXAMPLES AND TESTS:
+
+To be able to test this, I will add some Kripke Models
+
 \begin{code}
+--IntegerKripkeModel to KripkeModel
+
+--Example 1 : Reflexive, isolated worlds
+intW0, intW1, intW2 :: IntWorld
+intW0 = 0
+intW1 = 1
+intW2 = 2
+
+intUniverse1 :: IntUniverse
+intUniverse1 = [intW0, intW1, intW2]
+
+intValuation1 :: IntValuation
+intValuation1 w
+  | w == 0 || w == 1 = [1]  -- Proposition 1 holds in worlds 0 and 1
+  | w == 2           = []   -- No propositions hold in world 2
+  | otherwise        = []
+
+intRelation1 :: IntRelation
+intRelation1 = [(0, 0), (0, 1), (1, 0), (1, 1), (2, 2)]
+
+intModel1 :: IntKripkeModel
+intModel1 = IntKrM intUniverse1 intValuation1 intRelation1
+
+-- Convert to WorldState-based model
+exampleModel1 :: KripkeModel
+exampleModel1 = convertToWorldStateModel intModel1
+
+--Example2 : Linear
+-- Integer-based model
+intW20, intW21, intW22 :: IntWorld
+intW20 = 20
+intW21 = 21
+intW22 = 22
+
+intUniverse2 :: IntUniverse
+intUniverse2 = [intW20, intW21, intW22]
+
+intValuation2 :: IntValuation
+intValuation2 w
+  | w == 20 = [1]  -- Proposition 1 holds in world 20
+  | w == 21 = []   -- No propositions in world 21
+  | w == 22 = [1]  -- Proposition 1 holds in world 22
+  | otherwise = []
+
+intRelation2 :: IntRelation
+intRelation2 = [(20, 21), (21, 22)]  -- Linear: 20 -> 21 -> 22
+
+intModel2 :: IntKripkeModel
+intModel2 = IntKrM intUniverse2 intValuation2 intRelation2
+
+exampleModel2 :: KripkeModel
+exampleModel2 = convertToWorldStateModel intModel2
+
+--Example3 : S5
+-- Integer-based model
+intW30, intW31, intW32 :: IntWorld
+intW30 = 30
+intW31 = 31
+intW32 = 32
+
+intUniverse3 :: IntUniverse
+intUniverse3 = [intW30, intW31, intW32]
+
+intValuation3 :: IntValuation
+intValuation3 w
+  | w == 30 = [1]  -- Proposition 1 holds in world 30
+  | otherwise = [] -- No propositions elsewhere
+
+intRelation3 :: IntRelation
+intRelation3 = [(w1, w2) | w1 <- intUniverse3, w2 <- intUniverse3]  -- Fully connected
+
+intModel3 :: IntKripkeModel
+intModel3 = IntKrM intUniverse3 intValuation3 intRelation3
+
+exampleModel3 :: KripkeModel
+exampleModel3 = convertToWorldStateModel intModel3
+
+--Example 4 : Empty relation
+-- Integer-based model
+intW40, intW41, intW42 :: IntWorld
+intW40 = 40
+intW41 = 41
+intW42 = 42
+
+intUniverse4 :: IntUniverse
+intUniverse4 = [intW40, intW41, intW42]
+
+intValuation4 :: IntValuation
+intValuation4 w
+  | w == 40 = [1]  -- Proposition 1 holds in world 40
+  | w == 41 = []   -- No propositions in world 41
+  | w == 42 = [2]  -- Proposition 2 holds in world 42
+  | otherwise = []
+
+intRelation4 :: IntRelation
+intRelation4 = []  -- Empty relation
+
+intModel4 :: IntKripkeModel
+intModel4 = IntKrM intUniverse4 intValuation4 intRelation4
+
+exampleModel4 :: KripkeModel
+exampleModel4 = convertToWorldStateModel intModel4
+
+--Example5 : Cyclic with multiple propositions
+-- Integer-based model
+intW50, intW51, intW52 :: IntWorld
+intW50 = 50
+intW51 = 51
+intW52 = 52
+
+intUniverse5 :: IntUniverse
+intUniverse5 = [intW50, intW51, intW52]
+
+intValuation5 :: IntValuation
+intValuation5 w
+  | w == 50 = [1, 2]  -- Propositions 1 and 2 hold in world 50
+  | w == 51 = [1]     -- Proposition 1 holds in world 51
+  | w == 52 = []      -- No propositions in world 52
+  | otherwise = []
+
+intRelation5 :: IntRelation
+intRelation5 = [(50, 51), (51, 52), (52, 50)]  -- Cycle: 50 -> 51 -> 52 -> 50
+
+intModel5 :: IntKripkeModel
+intModel5 = IntKrM intUniverse5 intValuation5 intRelation5
+
+exampleModel5 :: KripkeModel
+exampleModel5 = convertToWorldStateModel intModel5
+
+--Example 6 : Euclidean, Transitive, and Reflexive Frame
+-- Integer-based model
+intW60, intW61, intW62, intW63, intW64 :: IntWorld
+intW60 = 60
+intW61 = 61
+intW62 = 62
+intW63 = 63
+intW64 = 64
+
+intUniverse6 :: IntUniverse
+intUniverse6 = [intW60, intW61, intW62, intW63, intW64]
+
+intValuation6 :: IntValuation
+intValuation6 w
+  | w == 60 = [1]        -- Proposition 1 holds in world 60
+  | w == 61 = [1, 2]     -- Propositions 1 and 2 hold in world 61
+  | w == 62 = []         -- No propositions in world 62
+  | w == 63 = [2]        -- Proposition 2 holds in world 63
+  | w == 64 = [1, 2]     -- Propositions 1 and 2 hold in world 64
+  | otherwise = []
+
+intRelation6 :: IntRelation
+intRelation6 = let cluster1 = [60, 61, 62]  -- First cluster: fully connected
+                   cluster2 = [63, 64]      -- Second cluster: fully connected
+               in [(w1, w2) | w1 <- cluster1, w2 <- cluster1] ++
+                  [(w1, w2) | w1 <- cluster2, w2 <- cluster2]
+
+intModel6 :: IntKripkeModel
+intModel6 = IntKrM intUniverse6 intValuation6 intRelation6
+
+exampleModel6 :: KripkeModel
+exampleModel6 = convertToWorldStateModel intModel6
+
+
+--Example 7: Euclidean, Transitive, but not Reflexive Frame
+-- Integer-based model
+intW70, intW71, intW72, intW73, intW74, intW75 :: IntWorld
+intW70 = 70
+intW71 = 71
+intW72 = 72
+intW73 = 73
+intW74 = 74
+intW75 = 75
+
+intUniverse7 :: IntUniverse
+intUniverse7 = [intW70, intW71, intW72, intW73, intW74, intW75]
+
+intValuation7 :: IntValuation
+intValuation7 w
+  | w == 70 = [1]
+  | w == 71 = [1, 2]
+  | w == 72 = [2]
+  | w == 73 = []
+  | w == 74 = [1]
+  | w == 75 = [1, 2]
+  | otherwise = []
+
+intRelation7 :: IntRelation
+intRelation7 = let cluster = [71, 72, 73, 74, 75]
+               in [(70, w) | w <- cluster] ++ [(w1, w2) | w1 <- cluster, w2 <- cluster]
+
+intModel7 :: IntKripkeModel
+intModel7 = IntKrM intUniverse7 intValuation7 intRelation7
+
+exampleModel7 :: KripkeModel
+exampleModel7 = convertToWorldStateModel intModel7
+
+\end{code}
+
+\subsection{Tests}
+
+\subsection{Tests for Kripke to KL}
+
+\begin{code}
+
+modelKL3 :: Model
+modelKL3 = fromJust(kripkeToKL exampleModel3 (makeWorldState 30))
+
+modelKL4 :: Model
+modelKL4 = fromJust(kripkeToKL exampleModel4 (makeWorldState 40))
+
+modelKL5 :: Model
+modelKL5 = fromJust(kripkeToKL exampleModel5 (makeWorldState 50))
+
+modelKL6 :: Model
+modelKL6 = fromJust(kripkeToKL exampleModel6 (makeWorldState 60))
+
+modelKL7 :: Model
+modelKL7 = fromJust(kripkeToKL exampleModel7 (makeWorldState 70))
+
+modelKL7b :: Model
+modelKL7b = fromJust(kripkeToKL exampleModel7 (makeWorldState 71))
+
+ref :: Formula
+ref = translateFormToKL (impl (Box (P 1)) (P 1))
+
+conTest :: Formula
+conTest = translateFormToKL (Con (P 1) (P 2))
+
+boxTest :: Formula
+boxTest = translateFormToKL (Box (P 1))
+
+diaTest :: Formula
+diaTest = translateFormToKL (Dia (P 1))
+
+negTest :: Formula
+negTest = translateFormToKL (Neg (P 1))
+
+test7 :: Bool
+test7 = checkModel modelKL7 (translateFormToKL (Con (P 2) (Neg (P 2))))
+
+testref :: Bool
+testref = checkModel modelKL7 ref
+
+testrefb :: Bool
+testrefb = checkModel modelKL7b ref
+
 
 \end{code}
