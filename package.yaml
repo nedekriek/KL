@@ -1,16 +1,13 @@
-name: KL
+name: report
 version: 0.1.0.0
 synopsis: My Haskell project
-description: See report.pdf
+description: See KL.pdf
 maintainer: My Name <my.email@example.com>
 category: Logic
 
 ghc-options: -Wall
 
 dependencies:
-  - Tableau
-  - SyntaxKL
-  - SemanticsKL
   - QuickCheck
   - base
   - containers
@@ -29,7 +26,7 @@ executables:
     main: Main.lhs
     source-dirs: exec
     dependencies:
-      - KL
+      - report
 
 tests:
   simpletests:
