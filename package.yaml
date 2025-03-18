@@ -29,10 +29,11 @@ executables:
       - KL
 
 tests:
-  simpletests:
-    main: simpletests.lhs
+  KL:
+    main: KL.lhs
     source-dirs: test
     dependencies:
       - KL
-      - QuickCheck
+      - base
       - hspec
+      - QuickCheck
