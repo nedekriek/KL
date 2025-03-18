@@ -15,9 +15,6 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import GHC.Integer (bitInteger)
-
-standardNames :: [StdName]
-standardNames = map (StdName . ("n" ++) . show) [1..]
 \end{code}
 
 \subsection{Preliminaries}
@@ -98,9 +95,6 @@ data KripkeModel = KrM
    , relation :: Relation }
 
 --definition of truth for modal formulas
-(!) :: Relation -> World -> [World]
-(!) r w = map snd $ filter ((==) w . fst) r
-
 --truth at a world
 makesTrue :: (KripkeModel,World) -> ModForm -> Bool
 makesTrue (KrM _ v _, w) (P k)     = k `elem` v w
@@ -108,6 +102,9 @@ makesTrue (m,w)          (Neg f)   = not (makesTrue (m,w) f)
 makesTrue (m,w)          (Con f g) = makesTrue (m,w) f && makesTrue (m,w) g
 makesTrue (KrM u v r, w) (Dia f)   = any (\w' -> makesTrue (KrM u v r, w') f) (r ! w)
 makesTrue (KrM u v r, w) (Box f)   = all (\w' -> makesTrue (KrM u v r,w') f) (r ! w)
+
+(!) :: Relation -> World -> [World]
+(!) r w = map snd $ filter ((==) w . fst) r
 
 --truth in a model
 trueEverywhere :: KripkeModel -> ModForm -> Bool
