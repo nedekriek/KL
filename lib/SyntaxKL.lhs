@@ -21,11 +21,23 @@ The \textit{non-logical symbols} comprise predicate symbols of any arity $\{P, Q
 n this implementation, standard names are represented as strings (e.g., "n1", "n2") via the StdName type, and variables are similarly encoded as strings (e.g., $"x"$, $"y"$) with the Variable type, ensuring that we have a distinct yet infinite supplies of each.
 
 \begin{code}
+arbitraryUpperLetter :: Gen String
+arbitraryUpperLetter = (:[]) <$> elements ['A'..'Z']
+
+arbitraryLowerLetter :: Gen String
+arbitraryLowerLetter = (:[]) <$> elements ['a'..'z']
+
 -- Represents a standard name (e.g., "n1") from the infinite domain N
 newtype StdName = StdName String deriving (Eq, Ord, Show)
+instance Arbitrary StdName where
+  arbitrary:: Gen StdName
+  arbitrary = StdName . ("n" ++) . show <$> elements [1 .. 20::Int]
 
 -- Represents a first-order variable (e.g., "x")
 newtype Variable = Var String deriving (Eq, Ord, Show)
+instance Arbitrary Variable where
+  arbitrary:: Gen Variable
+  arbitrary = Var . show <$> elements [1 .. 20::Int]
 \end{code}
 
 \textbf{Terms and Atoms}\\
@@ -40,6 +52,16 @@ data Term = VarTerm Variable   -- A variable (e.g., "x")
           | FuncAppTerm String [Term]   -- Function application (e.g., "Teacher" ("x"))
           deriving (Eq, Ord, Show)
 
+instance Arbitrary Term where
+  arbitrary :: Gen Term
+  arbitrary = sized $ \n -> genTerm (min n 5) where 
+    genTerm 0 = oneof [VarTerm <$> arbitrary, 
+                       StdNameTerm <$> arbitrary]
+    genTerm n = oneof [VarTerm <$> arbitrary, 
+                       StdNameTerm <$> arbitrary, 
+                       FuncAppTerm <$> arbitraryLowerLetter 
+                                   <*> resize (n `div` 2) (listOf1 (genTerm (n `div` 2)))]
+
 -- Terms with no variables and only a single function symbol
 data PrimitiveTerm = PStdNameTerm StdName   -- e.g., "n1"
                     | PFuncAppTerm String [StdName]     
@@ -48,6 +70,13 @@ data PrimitiveTerm = PStdNameTerm StdName   -- e.g., "n1"
 -- Define Atoms as predicates applied to terms
 data Atom = Pred String [Term]  --e.g. "Teach" ("n1", "n2")
   deriving (Eq, Ord, Show)
+
+instance Arbitrary Atom where
+  arbitrary :: Gen Atom
+  arbitrary = sized $ \n -> genAtom (min n 5) where 
+      genAtom :: Int -> Gen Atom
+      genAtom 0 = Pred <$> arbitraryLowerLetter <*> pure []
+      genAtom n = Pred <$> arbitraryLowerLetter <*> vectorOf n arbitrary
 
 -- Atoms with only standard names as terms
 data PrimitiveAtom = PPred String [StdName]
@@ -70,6 +99,16 @@ data Formula = Atom Atom                -- Predicate (e.g. Teach(x, "n1"))
               | K Formula               -- Knowledge Operator (e.g., K (Teach "ted" "sue"))
               deriving (Eq, Ord, Show)
 
+instance Arbitrary Formula where
+  arbitrary :: Gen Formula 
+  arbitrary = sized $ \n -> genFormula (min n 5)   where
+    genFormula 0 = oneof [Atom <$> arbitrary, 
+                          Equal <$> arbitrary <*> arbitrary]
+    genFormula n = oneof [Not <$> genFormula (n `div` 2),
+                          Or <$> genFormula (n `div` 2) <*> genFormula (n `div` 2),
+                          Exists <$> arbitrary <*> genFormula (n `div` 2),
+                          K <$> genFormula (n `div` 2)]
+                          
 -- Universal quantifier as derived form
 klforall :: Variable -> Formula -> Formula
 klforall x f = Not (Exists x (Not f))
@@ -84,46 +123,3 @@ iff f1 f2 = Or (Not (Or f1 f2)) (Or (Not f1) f2)
 \end{code}
 
 We can now use this implementation of $\mathcal{KL}$'s syntax to implement the semantics.
-
-\begin{code}
-instance Arbitrary StdName where
-  arbitrary:: Gen StdName
-  arbitrary = StdName . ("n" ++) . show <$> elements [1 .. 20::Int]
-
-instance Arbitrary Variable where
-  arbitrary:: Gen Variable
-  arbitrary = Var . show <$> elements [1 .. 20::Int]
-
-arbitraryUpperLetter :: Gen String
-arbitraryUpperLetter = (:[]) <$> elements ['A'..'Z']
-
-arbitraryLowerLetter :: Gen String
-arbitraryLowerLetter = (:[]) <$> elements ['a'..'z']
-
-instance Arbitrary Term where
-  arbitrary :: Gen Term
-  arbitrary = sized $ \n -> genTerm (min n 5) where 
-    genTerm 0 = oneof [VarTerm <$> arbitrary, 
-                       StdNameTerm <$> arbitrary]
-    genTerm n = oneof [VarTerm <$> arbitrary, 
-                       StdNameTerm <$> arbitrary, 
-                       FuncAppTerm <$> arbitraryLowerLetter 
-                                   <*> resize (n `div` 2) (listOf1 (genTerm (n `div` 2)))]
-
-instance Arbitrary Atom where
-  arbitrary :: Gen Atom
-  arbitrary = sized $ \n -> genAtom (min n 5) where 
-      genAtom :: Int -> Gen Atom
-      genAtom 0 = Pred <$> arbitraryLowerLetter <*> pure []
-      genAtom n = Pred <$> arbitraryLowerLetter <*> vectorOf n arbitrary
-
-instance Arbitrary Formula where
-  arbitrary :: Gen Formula 
-  arbitrary = sized $ \n -> genFormula (min n 5)   where
-    genFormula 0 = oneof [Atom <$> arbitrary, 
-                          Equal <$> arbitrary <*> arbitrary]
-    genFormula n = oneof [Not <$> genFormula (n `div` 2),
-                          Or <$> genFormula (n `div` 2) <*> genFormula (n `div` 2),
-                          Exists <$> arbitrary <*> genFormula (n `div` 2),
-                          K <$> genFormula (n `div` 2)]
-\end{code}
