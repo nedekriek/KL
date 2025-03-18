@@ -4,8 +4,8 @@
 
 
 \begin{code}
-module AskTell (ask, initial) where
-import qualified Data.Map as Map
+module AskTell (ask,askModel, tell, tellModel, initial) where
+-- import qualified Data.Map as Map
 import qualified Data.Set as Set
 import SyntaxKL
 import SemanticsKL
@@ -68,13 +68,13 @@ In addition to ASK and TELL, it is valuable to define an inital epistemic state.
 -- INITIAL operation (Section 5.3)
 -- Generate all possible world states for a finite set of atoms and terms
 allWorldStates :: [PrimitiveAtom] -> [PrimitiveTerm] -> [StdName] -> [WorldState]
-allWorldStates atoms terms domain = do
+allWorldStates atoms terms dom = do
    atomVals <- mapM (\_ -> [True, False]) atoms
-   termVals <- mapM (\t -> domain) terms
+   termVals <- mapM (\_ -> dom) terms
    return $ mkWorldState (zip atoms atomVals) (zip terms termVals)
 
 initial :: [PrimitiveAtom] -> [PrimitiveTerm] -> [StdName] -> EpistemicState
-initial atoms terms domain = Set.fromList (allWorldStates atoms terms domain)
+initial atoms terms dom = Set.fromList (allWorldStates atoms terms dom)
 
 
 \end{code}
