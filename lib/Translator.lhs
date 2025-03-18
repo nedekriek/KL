@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 \section{Comparing KL and Epistemic Logic}
 \begin{code}
 module Translator where
