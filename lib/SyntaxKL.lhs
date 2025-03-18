@@ -1,4 +1,6 @@
-\subsection{Syntax of $\mathcal{KL}$}\label{subsec:KLsyntax}
+
+
+\section{Syntax of $\mathcal{KL}$}\label{subsec:KLsyntax}
 The syntax of the language $\mathcal{KL}$ is described in \textcite{Lokb} and inspired by Levesque's work (\cite{levesque1981}).
 The SyntaxKL module establishes the foundation for $\mathcal{KL}$'s syntax, defining the alphabet and grammar used in subsequent semantic evaluation.
 \begin{code}
@@ -75,4 +77,4 @@ iff :: Formula -> Formula -> Formula
 iff f1 f2 = Or (Not (Or f1 f2)) (Or (Not f1) f2)
 \end{code}
 
-We can now use this implementation of $\mathcal{Kl}$'s syntax to implement the semantics.
+We can now use this implementation of $\mathcal{KL}$'s syntax to implement the semantics.
