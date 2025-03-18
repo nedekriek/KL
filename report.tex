@@ -66,9 +66,10 @@ To use the AskTell module's ASK, TELL, and INITIAL operators in GHCi, set up the
 Once loaded, you can experiment with epistemic operations. For example, define a domain with let d = Set.fromList [StdName "n1"], an initial epistemic state with let e = initial [PPred "P" [StdName "n1"]] [] [StdName "n1"], and a formula like let f = Atom (Pred "P" [StdNameTerm (StdName "n1")]). Test the ASK operator with ask d e f, which checks if $P(n1)$ is known across all worlds.
 Apply TELL with let e' = tell d e f to filter worlds where $P(n1)$ holds, then verify with ask d e' f, expecting True. Alternatively, use askModel and tellModel with a Model, such as let m = Model (Set.findMin e) e d, via askModel m f and tellModel m f.
 
-
 \subsection{Translations}
-
+You can interactively test translations and model properties. To do so, you can, for example, define a KL formula like let f = K (Atom (Pred "P" [StdNameTerm (StdName "n1")]))) and translate it to standard epistemic logic (SEL) with translateFormToKr f, expecting Just (Box (P 1)). 
+Conversely, translate an SEL formula like let g = Box (P 1) to KL with translateFormToKL g, yielding K (Atom (Pred "P" [StdNameTerm (StdName "n1")]))). 
+For models, create a KL model with let m = model1 and convert it to a Kripke model using translateModToKr m, then compare with kripkeM1 via test1. You can try out the Kripke-to-KL translation by using kripkeToKL exampleModel3 (makeWorldState 30), checking if it succeeds. You could also run some of our predefined tests like ftest1 or testAllFormulae to get to know our translation functions.
 
 
 %\input{Conclusion.tex}
