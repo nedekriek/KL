@@ -45,7 +45,7 @@ data Atom = Pred String [Term]  --e.g. "Teach" ("n1", "n2")
 
 -- Atoms with only standard names as terms
 data PrimitiveAtom = PPred String [StdName]
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Show)
 
 \end{code}
 
