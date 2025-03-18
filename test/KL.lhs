@@ -143,10 +143,11 @@ main = hspec $ do
             it "freeVars returns the free variables in a complex formula" $ do
                 let f = (Exists x (Or (Or (Not px) pf) (Equal n1 n2)))
                 freeVars f `shouldBe` Set.fromList [y]
-    -- Currently failing 
     describe "groundFormula" $ do
         it "groundFormula returns a ground formula (dependant on isGroundFormula passing all tests)" $ do
-            property $ \f -> forAll genStdNameSet $ \s -> all isGroundFormula (groundFormula (f :: Formula) s)
+            property $ forAll (resize 5 arbitrary) $ \f ->
+                forAll genStdNameSet $ \s ->
+                    all isGroundFormula (groundFormula (f :: Formula) s)
     describe "checkModel" $ do
         let x = Var "x"
             px = Atom (Pred "P" [VarTerm x])

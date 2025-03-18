@@ -1,4 +1,4 @@
-\section{$\mathcal{KL}$: Syntax and Semantics}\label{sec:KLmodel}
+
 
 \subsection{Semantics of $\mathcal{KL}$}\label{subsec:KLsemantics}
 $\mathcal{KL}$ is an epistemic extension of first-order logic designed to model knowledge and uncertainty, as detailed in \textcite{Lokb}.
@@ -221,55 +221,77 @@ checkModel m phi = all (satisfiesModel m) (groundFormula phi (domain m))
 \end{code}
 
 Note that we use the function groundFormula here. 
-Since we have implemented satisfiesModel such that it assumes ground formulas or errors out, we decided to handle free variables by grounding formulas by substituting free variables. 
+Since we have implemented satisfiesModel such that it assumes ground formulas or errors out, we decided to handle free variables by grounding formulas, given a set of free standard names to substitute. 
+Alternatives, would be to error or always substitute the same standard name. The the implementation that we have chosen is more flexible and allows for more varied usage, however it is computationally expensive (We would appreciate it if you have suggestions to improve this).
 We implement groundFormula as follows:
 
 \begin{code}
 
 -- Generates all ground instances of a formula
 groundFormula :: Formula -> Set StdName -> [Formula]
-groundFormula f dom = do
-  -- converts the set of free variables in f to a list
-  let fvs = Set.toList (freeVars f)
-  -- creates a list of all possible assignments of domain elements to each free variable
-  -- For each variable in fvs, toList domain provides the list of standard names, mapM applies this (monadically), producing all the combinations
-  subs <- mapM (\_ -> Set.toList dom) fvs
-  --iteratively substitute each variable v with a standard name n in the formula
-  return $ foldl (\acc (v, n) -> subst v n acc) f (zip fvs subs)
+groundFormula f dom = groundFormula' f >>= groundExists dom
+  where
+    -- Ground free variables at the current level
+    groundFormula' formula = do
+      let fvs = Set.toList (freeVars formula)
+      subs <- mapM (\_ -> Set.toList dom) fvs
+      return $ foldl (\acc (v, n) -> subst v n acc) formula (zip fvs subs)
+
+    -- Recursively eliminate Exists in a formula
+    groundExists domainEx formula = case formula of
+      Exists x f' -> map (\n -> subst x n f') (Set.toList domainEx) >>= groundExists domainEx
+      Atom a -> [Atom a]
+      Equal t1 t2 -> [Equal t1 t2]
+      Not f' -> map Not (groundExists domainEx f')
+      Or f1 f2 -> do
+        g1 <- groundExists domainEx f1
+        g2 <- groundExists domainEx f2
+        return $ Or g1 g2
+      K f' -> map K (groundExists domainEx f')
+
+
 \end{code}
 
 This function takes a formula and a domain of standard names and returns a list of all possible ground instances of the formula by substituting its free variables with elements from the domain.
-We use a function freeVars that identifies all the variables in a formula that need grounding or substitution. 
-It takes a formula and returns a Set Variable containing all the free variables in that formula:
+We use a function variables that identifies all the variables in a formula that need grounding or substitution. 
+If the Boolean 'includeBound' is 'True', variables returns all variables (free and bound) in the formula.
+If 'includeBound' is 'False', it returns only free variables, excluding those bound by quantifiers.
+This way, we can use the function to support both 'freeVars' (free variables only) and 'allVariables' (all variables).
 
 \begin{code}
+-- Collects variables in a formula, with a flag to include bound variables
+variables :: Bool -> Formula -> Set Variable
+variables includeBound = vars 
+  where
+    -- Helper function to recursively compute variables in a formula
+    vars formula = case formula of
+      -- Union of variables from all terms in the predicate
+      Atom (Pred _ terms) -> Set.unions (map varsTerm terms)
+      -- Union of variables from both terms in equality
+      Equal t1 t2 -> varsTerm t1 `Set.union` varsTerm t2
+      Not f' -> vars f'
+      Or f1 f2 -> vars f1 `Set.union` vars f2
+      Exists x f' -> if includeBound
+                     then Set.insert x (vars f') -- Include bound variable x if includeBound is True
+                     else Set.delete x (vars f') -- Exclude bound variable x if includeBound is False
+      K f' -> vars f'  -- Variables in the subformula under K (no binding)
+
+    varsTerm term = case term of
+      VarTerm v -> Set.singleton v  -- A variable term contributes itself to the set
+      StdNameTerm _ -> Set.empty  -- A standard name has no variables
+      FuncAppTerm _ args -> Set.unions (map varsTerm args)  -- Union of variables from all function arguments
+
 -- Collects free variables in a formula
 freeVars :: Formula -> Set Variable
-freeVars f = case f of
-  --Collects free variables from all terms in the predicate
-  Atom (Pred _ terms) -> Set.unions (map freeVarsTerm terms)
-  -- Unions the free variables from both terms t1 and t2.
-  Equal t1 t2 -> freeVarsTerm t1 `Set.union` freeVarsTerm t2
-  -- Recursively computes free variables in the negated subformula f'.
-  Not f' -> freeVars f'
-  -- Unions the free variables from both disjuncts f1 and f2.
-  Or f1 f2 -> freeVars f1 `Set.union` freeVars f2
-  -- Computes free variables in f', then removes x (the bound variable) using delete, since x is not free within \exists x f'
-  Exists x f' -> Set.delete x (freeVars f')
-  -- Recursively computes free variables in f', as the K operator doesn't bind variables.
-  K f' -> freeVars f'
-  where
-    freeVarsTerm t = case t of
-      --A variable (e.g., x) leads to a singleton set containing v.
-      VarTerm v -> Set.singleton v
-      -- A standard name (e.g., n1) has no free variables, so returns an empty set.
-      StdNameTerm _ -> Set.empty
-      -- A function application (e.g., f(x,n1)) recursively computes free variables in its arguments.
-      FuncAppTerm _ args -> Set.unions (map freeVarsTerm args)
+freeVars = variables False
+
+-- Collects all variables (free and bound) in a formula
+allVariables :: Formula -> Set Variable
+allVariables = variables True
 \end{code}
-
+\\
 -- TODO: work out acceptable sizes for generated artifacts 
-
+\\
 -- Semantics
 \begin{code}
 instance Arbitrary WorldState where

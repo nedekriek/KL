@@ -68,15 +68,15 @@ data Formula = Atom Atom                -- Predicate (e.g. Teach(x, "n1"))
               | Or Formula Formula      -- Disjunction
               | Exists Variable Formula -- Existential (e.g., exists x (Teach x "sue")) 
               | K Formula               -- Knowledge Operator (e.g., K (Teach "ted" "sue"))
-              deriving (Show)
+              deriving (Eq, Ord, Show)
 
 -- Universal quantifier as derived form
-for_all :: Variable -> Formula -> Formula
-for_all x f = Not (Exists x (Not f))
+klforall :: Variable -> Formula -> Formula
+klforall x f = Not (Exists x (Not f))
 
 -- Implication as derived form
 implies :: Formula -> Formula -> Formula
-implies f1 f2 = Or (Not f1) f2
+implies f1 = Or (Not f1)
 
 -- Biconditional as derived form
 iff :: Formula -> Formula -> Formula
