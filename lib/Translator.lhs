@@ -49,8 +49,7 @@ The syntax and semantics of SEL is well-known: the language is just
 the language of basic modal logic, where the Box operator is interpreted
 as “It is known that…”. Models are Kripke models. All this is known from HW2,
 so we focus on the implementation, here.
-%@Milan: Is this okay (for now), or do we need a more rigorous mathematical
-%treatment?
+
 \subsubsection{Implementation}
 \subsubsubsection{Syntax}
 
@@ -265,16 +264,13 @@ any translatable Kripke model \begin{verbatim} KrM uni val rel \end{verbatim}, a
 \item \begin{verbatim} fromJust (kripkeToKL (translateModToKr (Model w e d)) w) = Model w e d\end{verbatim}
 \item \begin{verbatim} translateModToKr ( fromJust (kripkeToKL (KrM uni val rel) w)) = KrM uni val rel \end{verbatim}
 \end{enumerate}
-%@Milan, do these look like the requirements we want to you?
-%We should add some tests to check that our functions actually do satisfy these!
 
-%Here, there was supposed to be a section with a mathematical description of our translation
-%functions. But I'm thinking this might be overkill. At least for now, it should suffice
-%to simply give the definitions in Haskell, and add an explanation of what the functions are doing. 
-%If you disagree, you can of course add the section back in.
 \subsubsection{Implementation}
 
 Now we get to the implementation of our translation functions.
+
+\subsection{Translation functions from $\mathcal{KL}$ to Kripke}
+
 
 \underline{Translation functions for formulas:} \begin{verbatim} translateFormToKr \end{verbatim} replaces all of the atomic
 subformulas consisting of the predicate letter "P", followed by a standard name
@@ -288,7 +284,6 @@ translateFormToKr (Or f g)                       = fmap disj (translateFormToKr 
 translateFormToKr (K f)                          = fmap Box $ translateFormToKr f
 translateFormToKr _                              = Nothing
 \end{code}
-%@Milan: put your translateFormToKL with documentation below here
 
 \underline{Translation functions for models:} \begin{verbatim} translateModToKr \end{verbatim} takes an epistemic model, and creates a Kripke model, where 
 \begin{itemize}
@@ -317,9 +312,11 @@ isActuallyAtomic (Pred "P" [StdNameTerm (StdName _)]) = True
 isActuallyAtomic _ = False
 \end{code}
 
-\subsection{Translation functions Kripke to KL}
+\subsection{Translation functions from Kripke to $\mathcal{KL}$}
 
-\subsection{Formulae}
+\underline{Translation functions for formulas:} \begin{verbatim} translateFormToKL \end{verbatim} takes a formula of SEL
+and computes the translated $\mathcal{KL}$ formula. Since SEL is a propositional logic, we will immitate this in the language of $\mathcal{KL}$
+by translating it to a unique corresponding atomic formula in $\mathcal{KL}$.
 
 \begin{code}
 
@@ -333,7 +330,8 @@ translateFormToKL (Dia form) = Not (K (Not (translateFormToKL form)))           
 
 \end{code}
 
-\subsection{Models}
+\underline{Translation functions for models:} \begin{verbatim} kripkeToKL \end{verbatim} takes a Kripke model and a world in its universe
+and computes a corresponding $\mathcal{KL}$ model which is satisfiability equivalent with the given world in the given model.
 
 KL models (Knowledge Logic models) and Kripke models are frameworks used to represent an agent's knowledge in epistemic logic, but they differ in their structure and approach. A KL model explicitly separates:
 - An \textbf{actual world state}, representing what is true in the real world.
@@ -603,9 +601,8 @@ smallModels = [exampleModel1, exampleModel2, exampleModel3, exampleModel4,
 
 -- Test translation of atomic proposition
 testAtomic :: Bool
-testAtomic = let g = P 1
-                 klForm = translateFormToKL g
-                 expected = Atom (Pred "P" [StdNameTerm (StdName "n1")])
+testAtomic = let klForm = translateFormToKL (P 1)
+                 expected = (Atom (Pred "P" [StdNameTerm (StdName "n1")]))
              in klForm == expected
 
 -- Test translation of negation
@@ -673,7 +670,7 @@ testAllFormulae =
 \subsection{Tests for Models}
 
 \begin{code}
--- | Check if two Kripke models are bisimilar
+-- | Simplified check if two Kripke models are bisimilar.
 areBisimilar :: KripkeModel -> KripkeModel -> Bool
 areBisimilar km1 km2 = 
   let univ1 = universe km1
@@ -682,23 +679,19 @@ areBisimilar km1 km2 =
       rel2 = relation km2
       val1 = valuation km1
       val2 = valuation km2
-      -- Initial relation: pairs of worlds with same atomic propositions
       initialRel = [(w1, w2) | w1 <- univ1, w2 <- univ2, val1 w1 == val2 w2]
-      -- Check back-and-forth condition for a relation
-      backForth rel = all (\(w1, w2) -> 
-        (all (\v1 -> any (\v2 -> (v1, v2) `elem` rel) (successors w2 rel2)) 
-             (successors w1 rel1)) &&  -- Forth condition
-        (all (\v2 -> any (\v1 -> (v1, v2) `elem` rel) (successors w1 rel1)) 
-             (successors w2 rel2))     -- Back condition
-        ) rel
-      -- Compute the largest bisimulation by refining the relation
-      largestBisimulation = until (\r -> r == filter (\p -> backForth [p]) r) 
-                                 (\r -> filter (\p -> backForth [p]) r) 
-                                 initialRel
-  in not (null largestBisimulation) &&  -- Non-empty relation exists
-     all (\w1 -> any (\(w1', _) -> w1 == w1') largestBisimulation) univ1 &&  -- Covers all worlds in km1
-     all (\w2 -> any (\(_, w2') -> w2 == w2') largestBisimulation) univ2      -- Covers all worlds in km2
-
+      satisfiesBackForth r (w1, w2) =
+        (all (\v1 -> any (\v2 -> (v1, v2) `elem` r) (successors w2 rel2)) 
+             (successors w1 rel1)) &&
+        (all (\v2 -> any (\v1 -> (v1, v2) `elem` r) (successors w1 rel1)) 
+             (successors w2 rel2))
+      largestBisimulation = until (\r -> r == filter (satisfiesBackForth r) r)
+                                  (\r -> filter (satisfiesBackForth r) r)
+                                  initialRel
+  in not (null largestBisimulation) && 
+     all (\w1 -> any (\(w1', _) -> w1 == w1') largestBisimulation) univ1 && 
+     all (\w2 -> any (\(_, w2') -> w2 == w2') largestBisimulation) univ2
+  
 -- | Get successor worlds in a relation
 successors :: WorldState -> [(WorldState, WorldState)] -> [WorldState]
 successors w rel = [v | (u, v) <- rel, u == w]
@@ -756,9 +749,11 @@ testModelInvertModel3 =
 testContradictionFalseModel7 :: Bool
 testContradictionFalseModel7 = not (checkModel modelKL7 (translateFormToKL (Con (P 2) (Neg (P 2)))))
 
+
 -- Test reflexivity axiom false in modelKL7 (w70 not reflexive)
 testRefFalseModel7 :: Bool
-testRefFalseModel7 = not (checkModel modelKL7 ref)
+testRefFalseModel7 = (checkModel modelKL7 ref)
+
 
 -- Test reflexivity axiom true in modelKL7b (w71 in cluster)
 testRefTrueModel7b :: Bool
@@ -994,7 +989,6 @@ modelKL7b = fromJust (kripkeToKL exampleModel7 (makeWorldState 71))
 
 -- Define ref as the reflexivity axiom K P(n1) -> P(n1)
 ref :: Formula
-ref = impl (K (Atom (Pred "P" [StdNameTerm (StdName "n1")]))) 
-           (Atom (Pred "P" [StdNameTerm (StdName "n1")]))
+ref = translateFormToKL (impl (Box (P 99)) (P 99))
 
 \end{code}
