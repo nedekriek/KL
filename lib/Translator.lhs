@@ -141,7 +141,7 @@ convertToWorldStateModel :: IntKripkeModel -> KripkeModel
 convertToWorldStateModel (IntKrM intUniv intVal intRel) =
   let worldStates = map makeWorldState intUniv
       worldToInt :: WorldState -> Integer
-      worldToInt ws = case find (\(i, w) -> w == ws) (zip intUniv worldStates) of
+      worldToInt ws = case find (\(_, w) -> w == ws) (zip intUniv worldStates) of
                         Just (i, _) -> i
                         Nothing -> error "WorldState not found in universe"
       newVal :: Valuation
