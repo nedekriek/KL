@@ -16,50 +16,8 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import GHC.Integer (bitInteger)
 
--- ONLY FOR NOW – CHANGE THIS LATER
--- We manually copy the new definitions from Lou's latest merge into main
--- When we've managed to rebase our branch, we will be able to just use these
--- functions by importing SyntaxKL and SemanticsKL
--- But since I'm having issues with rebasing, for now I'm copying them as a quick fix. 
-
--- from the new SyntaxKL:
--- Terms with no variables and only a single function symbol
-data PrimitiveTerm = PStdNameTerm StdName   -- e.g., "n1"
-                    | PFuncApp String [StdName]     
-  deriving (Eq, Ord, Show)
-
--- Atoms with only standard names as terms
-data PrimitiveAtom = PPred String [StdName]
-  deriving (Eq, Ord, Show)
-
--- from the new SemanticsKL:
--- Constructs a WorldState from primitive atoms and primitive terms
-mkWorldState :: [(PrimitiveAtom, Bool)] -> [(PrimitiveTerm, StdName)] -> WorldState
-mkWorldState atoms terms =
-  let convertAtom (PPred p ns, b) = (Pred p (map StdNameTerm ns), b)  -- Convert primitive atom to Atom
-      convertTerm (PStdNameTerm n, v) = (StdNameTerm n, v)  -- Convert primitive term to Term
-      convertTerm (PFuncApp f ns, v) = (FuncApp f (map StdNameTerm ns), v)
-      atomList = map convertAtom atoms
-      termList = map convertTerm terms
-  in WorldState (Map.fromList (checkDups atomList)) (Map.fromList (checkDups termList))
-
--- Checks for contradictory mappings in a key-value list
-checkDups :: (Eq k, Show k, Eq v, Show v) => [(k, v)] -> [(k, v)]
-checkDups [] = []  -- Empty list is consistent
-checkDups ((k, v) : rest) =  -- Recursively checks each key k against the rest of the list.
-   case lookup k rest of  
-      Just v' | v /= v' -> error $ "Contradictory mapping for " ++ show k ++ ": " ++ show v ++ " vs " ++ show v' -- If k appears with a different value v', throws an error.
-      _ -> (k, v) : checkDups rest  -- Keep pair if no contradiction
-
--- This is the old mkWorldState function, commented out
--- mkWorldState :: [(Atom, Bool)] -> [(Term, StdName)] -> WorldState
--- mkWorldState atoms terms =
--- WorldState (Map.fromList atoms) (Map.fromList terms)
-
--- THIS WE ARE STILL GOING TO NEED, EVEN AFTER THE SUCCESSFUL REBASE
--- Infinite set of standard names (simulated as a generator).
---standardNames :: [StdName]
---standardNames = map (StdName . ("n" ++) . show) [1..]
+standardNames :: [StdName]
+standardNames = map (StdName . ("n" ++) . show) [1..]
 \end{code}
 
 \subsection{Preliminaries}
