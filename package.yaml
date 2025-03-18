@@ -1,4 +1,4 @@
-name: report
+name: KL
 version: 0.1.0.0
 synopsis: My Haskell project
 description: See KL.pdf
@@ -26,7 +26,7 @@ executables:
     main: Main.lhs
     source-dirs: exec
     dependencies:
-      - report
+      - KL
 
 tests:
   simpletests:
