@@ -312,17 +312,20 @@ any translatable Kripke model \begin{verbatim} KrM uni val rel \end{verbatim}, a
 %truth values should be preserved
 \item \begin{verbatim} Model w e d |= f \end{verbatim} iff
 \begin{verbatim} (translateModToKr (Model w e d)) w |= fromJust (translateFormToKr f )\end{verbatim}
+
 \item \begin{verbatim} (KrM uni val rel) w |= g \end{verbatim} iff 
 \begin{verbatim} fromJust (kripkeToKL (KrM uni val rel) w) |= translateFormToKL g\end{verbatim}
+
 %Translating formulas back and forth shouldn't change anything:
 \item \begin{verbatim} fromJust (translateFormToKL (translateFormToKr f )) = f\end{verbatim}
 \item \begin{verbatim} translateFormToKr (fromJust (translateFormToKL g )) = g\end{verbatim}
+
 %Translating models back and forth shouldn't change anything:
 \item \begin{verbatim} fromJust (kripkeToKL (translateModToKr (Model w e d)) w) = Model w e d\end{verbatim}
 \item \begin{verbatim} translateModToKr ( fromJust (kripkeToKL (KrM uni val rel) w)) = KrM uni val rel \end{verbatim}
-
 \end{enumerate}
-
+%@Milan, do these look like the requirements we want to you?
+%We should add some tests to check that our functions actually do satisfy these!
 
 
 \subsubsection{Mathematical description of the translation functions}
