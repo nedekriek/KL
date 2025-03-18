@@ -171,7 +171,7 @@ makeWorldState n =
 
 \end{code}
 
-Note to self: Some helper functions for Milan's stuff -> Could it make sense to 
+Note to self: What follows are some helper functions for Milan's stuff -> Could it make sense to 
 put them into another section, in the place where they are needed?
 \begin{code}
 
@@ -232,7 +232,7 @@ instance Eq IntKripkeModel where
 -- Why is this possible? 
 -- Because when checking for equality of KripkeModels, we ignore the order of worlds in the
 -- list that defines the universe;
--- but when we convert to IntKripkeModels, the order matters!
+-- but for the conversion to IntKripkeModels, the order matters!
 -- So we may get translateModToKr model1 == kripkeM1, but when we print
 -- the lhs and rhs of the equation, we get different results.
 -- This is perfectly fine, and not unexpected, since printing works
