@@ -17,17 +17,47 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import GHC.Integer (bitInteger)
 
+-- ONLY FOR NOW – CHANGE THIS LATER
+-- We manually copy the new definitions from Lou's latest merge into main
+-- When we've managed to rebase our branch, we will be able to just use these
+-- functions by importing SyntaxKL and SemanticsKL
+-- But since I'm having issues with rebasing, for now I'm copying them as a quick fix. 
 
---import HW1 (Form)
+-- from the new SyntaxKL:
+-- Terms with no variables and only a single function symbol
+data PrimitiveTerm = PStdNameTerm StdName   -- e.g., "n1"
+                    | PFuncApp String [StdName]     
+  deriving (Eq, Ord, Show)
 
--- we need a few definitions that were in Lou's original ModelKL, but are not in 
--- SyntaxKL or SemanticsKL:
+-- Atoms with only standard names as terms
+data PrimitiveAtom = PPred String [StdName]
+  deriving (Eq, Ord, Show)
 
--- Helper to create a world state from atom and term assignments
-mkWorldState :: [(Atom, Bool)] -> [(Term, StdName)] -> WorldState
+-- from the new SemanticsKL:
+-- Constructs a WorldState from primitive atoms and primitive terms
+mkWorldState :: [(PrimitiveAtom, Bool)] -> [(PrimitiveTerm, StdName)] -> WorldState
 mkWorldState atoms terms =
-      WorldState (Map.fromList atoms) (Map.fromList terms)
+  let convertAtom (PPred p ns, b) = (Pred p (map StdNameTerm ns), b)  -- Convert primitive atom to Atom
+      convertTerm (PStdNameTerm n, v) = (StdNameTerm n, v)  -- Convert primitive term to Term
+      convertTerm (PFuncApp f ns, v) = (FuncApp f (map StdNameTerm ns), v)
+      atomList = map convertAtom atoms
+      termList = map convertTerm terms
+  in WorldState (Map.fromList (checkDups atomList)) (Map.fromList (checkDups termList))
 
+-- Checks for contradictory mappings in a key-value list
+checkDups :: (Eq k, Show k, Eq v, Show v) => [(k, v)] -> [(k, v)]
+checkDups [] = []  -- Empty list is consistent
+checkDups ((k, v) : rest) =  -- Recursively checks each key k against the rest of the list.
+   case lookup k rest of  
+      Just v' | v /= v' -> error $ "Contradictory mapping for " ++ show k ++ ": " ++ show v ++ " vs " ++ show v' -- If k appears with a different value v', throws an error.
+      _ -> (k, v) : checkDups rest  -- Keep pair if no contradiction
+
+-- This is the old mkWorldState function, commented out
+-- mkWorldState :: [(Atom, Bool)] -> [(Term, StdName)] -> WorldState
+-- mkWorldState atoms terms =
+-- WorldState (Map.fromList atoms) (Map.fromList terms)
+
+-- THIS WE ARE STILL GOING TO NEED, EVEN AFTER THE SUCCESSFUL REBASE
 -- Infinite set of standard names (simulated as a generator).
 standardNames :: [StdName]
 standardNames = map (StdName . ("n" ++) . show) [1..]
@@ -170,7 +200,7 @@ convertToWorldStateModel (IntKrM intUniv intVal intRel) =
 
 makeWorldState :: Integer -> WorldState
 makeWorldState n =
-  let uniqueAtom = Pred "WorldID" [StdNameTerm (StdName (show n))]
+  let uniqueAtom = PPred "WorldID" [StdName (show n)]
   in mkWorldState [(uniqueAtom, True)] []
 
 \end{code}
@@ -478,10 +508,10 @@ n4 = StdName "n4" -- tara
 
 -- a model where the actual world is part of the epistemic state
 w1, w2, w3, w4 :: WorldState
-w1 = mkWorldState [ (Pred "P" [StdNameTerm n1], True) ] []
-w2 = mkWorldState [ (Pred "P" [StdNameTerm n2], True)
-                  , (Pred "P" [StdNameTerm n3], True) ] []
-w3 = mkWorldState [ (Pred "P" [StdNameTerm n4], True) ] []
+w1 = mkWorldState [ (PPred "P" [n1], True) ] []
+w2 = mkWorldState [ (PPred "P" [n2], True)
+                  , (PPred "P" [n3], True) ] []
+w3 = mkWorldState [ (PPred "P" [n4], True) ] []
 w4 = mkWorldState [] []
 
 e1 :: EpistemicState
@@ -529,9 +559,9 @@ test2 = translateModToKr model2 == kripkeM2
 
 -- a model that contains non-atomic formulas
 w2' :: WorldState
-w2' = mkWorldState [ (Pred "P" [StdNameTerm n2], True)
-                  , (Pred "P" [StdNameTerm n3], True) 
-                  , (Pred "R" [StdNameTerm n4, StdNameTerm n1], True)] []
+w2' = mkWorldState [ (PPred "P" [n2], True)
+                  , (PPred "P" [n3], True) 
+                  , (PPred "R" [n4, n1], True)] []
 
 e1' :: EpistemicState
 e1' = Set.fromList [w1, w2', w3, w4]
