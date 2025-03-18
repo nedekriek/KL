@@ -228,16 +228,25 @@ We implement groundFormula as follows:
 
 -- Generates all ground instances of a formula
 groundFormula :: Formula -> Set StdName -> [Formula]
-groundFormula f dom = do
-  let allVars = allVariables f  -- Collect all variables (free and bound)
-      fvs = Set.toList (freeVars f)  -- Free variables
-      bvs = Set.toList (Set.difference allVars (freeVars f))  -- Bound variables
-      vars = fvs ++ bvs  -- Combine free and bound variables
-  -- creates a list of all possible assignments of domain elements to each free variable
-  -- For each variable in fvs, toList domain provides the list of standard names, mapM applies this (monadically), producing all the combinations
-  subs <- mapM (\_ -> Set.toList dom) vars
-  --iteratively substitute each variable v with a standard name n in the formula
-  return $ foldl (\acc (v, n) -> subst v n acc) f (zip vars subs)
+groundFormula f dom = groundFormula' f >>= groundExists dom
+  where
+    -- Ground free variables at the current level
+    groundFormula' formula = do
+      let fvs = Set.toList (freeVars formula)
+      subs <- mapM (\_ -> Set.toList dom) fvs
+      return $ foldl (\acc (v, n) -> subst v n acc) formula (zip fvs subs)
+
+    -- Recursively eliminate Exists in a formula
+    groundExists dom formula = case formula of
+      Exists x f' -> map (\n -> subst x n f') (Set.toList dom) >>= groundExists dom
+      Atom a -> [Atom a]
+      Equal t1 t2 -> [Equal t1 t2]
+      Not f' -> map Not (groundExists dom f')
+      Or f1 f2 -> do
+        g1 <- groundExists dom f1
+        g2 <- groundExists dom f2
+        return $ Or g1 g2
+      K f' -> map K (groundExists dom f')
 
 
 \end{code}
@@ -251,7 +260,7 @@ This way, we can use the function to support both 'freeVars' (free variables onl
 \begin{code}
 -- Collects variables in a formula, with a flag to include bound variables
 variables :: Bool -> Formula -> Set Variable
-variables includeBound f = vars f
+variables includeBound = vars 
   where
     -- Helper function to recursively compute variables in a formula
     vars formula = case formula of
@@ -279,9 +288,9 @@ freeVars = variables False
 allVariables :: Formula -> Set Variable
 allVariables = variables True
 \end{code}
-
+\\
 -- TODO: work out acceptable sizes for generated artifacts 
-
+\\
 -- Semantics
 \begin{code}
 instance Arbitrary WorldState where

@@ -61,7 +61,7 @@ applyRule (Node f w) branch = case f of
   Not (Equal _ _) -> Open [branch]  -- Keep negated equality 
   Not (Not f') -> Open [Branch (Node f' w : nodes branch) (params branch)] -- Case: double negation, e.g., replace $\neg \neg \varphi$ with $\varphi$
   Not (Or f1 f2) -> Open [Branch (Node (Not f1) w : Node (Not f2) w : nodes branch) (params branch)] -- Case: negated disjunction
-  Not (Exists x f') -> Open [Branch (Node (for_all x (Not f')) w : nodes branch) (params branch)] -- Case:: negated existential
+  Not (Exists x f') -> Open [Branch (Node (klforall x (Not f')) w : nodes branch) (params branch)] -- Case:: negated existential
   Not (K f') -> Open [expandKNot f' w branch] -- Case: negated knowledge
   Or f1 f2 -> Open [ Branch (Node f1 w : nodes branch) (params branch)
                    , Branch (Node f2 w : nodes branch) (params branch) ] -- Disjunction rule, split the branch
