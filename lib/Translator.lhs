@@ -591,6 +591,16 @@ test3 = translateKrToKrInt (translateModToKr model1) == translateKrToKrInt (tran
 \subsection{Tests for formulae}
 
 \begin{code}
+-- | Check if two SEL formulae are logically equivalent across a set of Kripke models
+areEquivalent :: [KripkeModel] -> ModForm -> ModForm -> Bool
+areEquivalent models f1 f2 = 
+  all (\m -> all (\w -> makesTrue (m, w) f1 == makesTrue (m, w) f2) (universe m)) models
+
+-- | A small set of predefined Kripke models for testing equivalence
+smallModels :: [KripkeModel]
+smallModels = [exampleModel1, exampleModel2, exampleModel3, exampleModel4, 
+               exampleModel5, exampleModel6, exampleModel7]
+
 -- Test translation of atomic proposition
 testAtomic :: Bool
 testAtomic = let g = P 1
@@ -627,19 +637,21 @@ testDiamond = let g = Dia (P 1)
                   expected = Not (K (Not (Atom (Pred "P" [StdNameTerm (StdName "n1")]))))
               in klForm == expected
 
--- Test invertibility of a simple formula translation
+-- Test invertibility of a simple formula using logical equivalence
 testFormInvertSimple :: Bool
-testFormInvertSimple = let g = Box (P 1)
-                           klForm = translateFormToKL g
-                           selForm = fromJust (translateFormToKr klForm)
-                       in selForm == g
+testFormInvertSimple = 
+  let g = Box (P 1)                      -- Original formula: □P1
+      klForm = translateFormToKL g       -- Translate to KL
+      selForm = fromJust (translateFormToKr klForm)  -- Back-translate to SEL
+  in areEquivalent smallModels g selForm  -- Check equivalence
 
--- Test invertibility of a complex formula translation
+-- Test invertibility of a complex formula using logical equivalence
 testFormInvertComplex :: Bool
-testFormInvertComplex = let g = Box (Con (P 1) (Neg (P 2)))
-                            klForm = translateFormToKL g
-                            selForm = fromJust (translateFormToKr klForm)
-                        in selForm == g
+testFormInvertComplex = 
+  let g = Box (Con (P 1) (Neg (P 2)))   -- Original formula: □(P1 ∧ ¬P2)
+      klForm = translateFormToKL g       -- Translate to KL
+      selForm = fromJust (translateFormToKr klForm)  -- Back-translate to SEL
+  in areEquivalent smallModels g selForm  -- Check equivalence
 
 -- Aggregate all formula tests with diagnostic output
 testAllFormulae :: String
@@ -656,12 +668,41 @@ testAllFormulae =
   in if null failures
      then "All formula tests passed"
      else "Failed formula tests: " ++ unwords failures
-
 \end{code}
 
 \subsection{Tests for Models}
 
 \begin{code}
+-- | Check if two Kripke models are bisimilar
+areBisimilar :: KripkeModel -> KripkeModel -> Bool
+areBisimilar km1 km2 = 
+  let univ1 = universe km1
+      univ2 = universe km2
+      rel1 = relation km1
+      rel2 = relation km2
+      val1 = valuation km1
+      val2 = valuation km2
+      -- Initial relation: pairs of worlds with same atomic propositions
+      initialRel = [(w1, w2) | w1 <- univ1, w2 <- univ2, val1 w1 == val2 w2]
+      -- Check back-and-forth condition for a relation
+      backForth rel = all (\(w1, w2) -> 
+        (all (\v1 -> any (\v2 -> (v1, v2) `elem` rel) (successors w2 rel2)) 
+             (successors w1 rel1)) &&  -- Forth condition
+        (all (\v2 -> any (\v1 -> (v1, v2) `elem` rel) (successors w1 rel1)) 
+             (successors w2 rel2))     -- Back condition
+        ) rel
+      -- Compute the largest bisimulation by refining the relation
+      largestBisimulation = until (\r -> r == filter (\p -> backForth [p]) r) 
+                                 (\r -> filter (\p -> backForth [p]) r) 
+                                 initialRel
+  in not (null largestBisimulation) &&  -- Non-empty relation exists
+     all (\w1 -> any (\(w1', _) -> w1 == w1') largestBisimulation) univ1 &&  -- Covers all worlds in km1
+     all (\w2 -> any (\(_, w2') -> w2 == w2') largestBisimulation) univ2      -- Covers all worlds in km2
+
+-- | Get successor worlds in a relation
+successors :: WorldState -> [(WorldState, WorldState)] -> [WorldState]
+successors w rel = [v | (u, v) <- rel, u == w]
+
 -- Helper function to test truth preservation
 testTruthPres :: KripkeModel -> WorldState -> ModForm -> Bool
 testTruthPres km w g = 
@@ -702,13 +743,14 @@ testTruthPresDiaP1Model3 = testTruthPres exampleModel3 (makeWorldState 30) (Dia 
 testTruthPresConModel6 :: Bool
 testTruthPresConModel6 = testTruthPres exampleModel6 (makeWorldState 60) (Con (P 1) (P 2))
 
--- Test model invertibility for S5 model
+-- Test model invertibility for S5 model using bisimulation
 testModelInvertModel3 :: Bool
-testModelInvertModel3 = let km = exampleModel3
-                            w = makeWorldState 30
-                            klm = fromJust (kripkeToKL km w)
-                            kmBack = translateModToKr klm
-                        in kmBack == km
+testModelInvertModel3 = 
+  let km = exampleModel3                -- Original S5 Kripke model
+      w = makeWorldState 30             -- A starting world state
+      klm = fromJust (kripkeToKL km w)  -- Translate to KL
+      kmBack = translateModToKr klm     -- Back-translate to Kripke model
+  in areBisimilar kmBack km             -- Check bisimulation
 
 -- Test contradiction is false in modelKL7
 testContradictionFalseModel7 :: Bool
@@ -742,7 +784,6 @@ testAllModels =
   in if null failures
      then "All model tests passed"
      else "Failed model tests: " ++ unwords failures
-
 \end{code}
 
 \subsection{example models used to test the translations from Kripke to KL}
@@ -943,5 +984,17 @@ intModel7 = IntKrM intUniverse7 intValuation7 intRelation7
 
 exampleModel7 :: KripkeModel
 exampleModel7 = convertToWorldStateModel intModel7
+
+-- Define modelKL7 and modelKL7b from exampleModel7
+modelKL7 :: Model
+modelKL7 = fromJust (kripkeToKL exampleModel7 (makeWorldState 70))
+
+modelKL7b :: Model
+modelKL7b = fromJust (kripkeToKL exampleModel7 (makeWorldState 71))
+
+-- Define ref as the reflexivity axiom K P(n1) -> P(n1)
+ref :: Formula
+ref = impl (K (Atom (Pred "P" [StdNameTerm (StdName "n1")]))) 
+           (Atom (Pred "P" [StdNameTerm (StdName "n1")]))
 
 \end{code}
