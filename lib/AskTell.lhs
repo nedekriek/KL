@@ -1,4 +1,4 @@
-\section{Ask & Tell Operators}\label{sec:AskTell}
+\section{Ask and Tell Operators}\label{sec:AskTell}
 
 To use $\mathcal{KL}$ to interact with a knowledge base, \textcite{Lokb} defines two operators on epistemic states: $ASK$ and $TELL$. Informally, $ASK$ is used to determine if a sentence is known to a knowledge base whereas $TELL$ is used to add a sentence to the knowledge base. Since epistemic states are sets of possible worlds, the more sentences that are known reduces the set of possible worlds. For this purpose, an $INITIAL$ epistemic state is also defined to contain all possible worlds given a finite set of atoms and terms.
 

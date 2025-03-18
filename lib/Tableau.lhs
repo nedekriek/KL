@@ -1,6 +1,6 @@
-\section{Tableau-Based Satisfiability and Validity Checking in $\mathcal{KL}$}\label{subsec:tableau}
+\section{Tableau-Based Satisfiability and Validity Checking in \texorpdfstring{$\mathcal{KL}$}{KL}}\label{subsec:tableau}
 
-Note: For the Beta-version, we omitted function symbol evaluation, limiting the satisfiability and validity checking to a propositional-like subset.\\
+Note: For the Beta-version, we omitted function symbol evaluation, limiting the satisfiability and validity checking to a propositional-like subset. 
 \\
 This subsection implements satisfiability and validity checkers for  $\mathcal{KL}$ using the tableau method, a systematic proof technique that constructs a tree to test formula satisfiability by decomposing logical components and exploring possible models.
 In $\mathcal{KL}$, this requires handling both first-order logic constructs (quantifiers, predicates) and the epistemic operator $K$, which requires tracking possible worlds.

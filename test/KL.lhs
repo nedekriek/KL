@@ -1,4 +1,4 @@
-\section{Semantics Tests}
+\section{Semantics Tests}\label{sec:KLTests}
 
 \begin{code}
 {-# LANGUAGE InstanceSigs #-}

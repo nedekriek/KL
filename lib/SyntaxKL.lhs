@@ -1,6 +1,7 @@
 
 
-\section{Syntax of $\mathcal{KL}$}\label{subsec:KLsyntax}
+\subsection{Syntax of \texorpdfstring{$\mathcal{KL}$}{KL}}\label{subsec:KLsyntax}
+
 The syntax of the language $\mathcal{KL}$ is described in \textcite{Lokb} and inspired by Levesque's work (\cite{levesque1981}).
 The SyntaxKL module establishes the foundation for $\mathcal{KL}$'s syntax, defining the alphabet and grammar used in subsequent semantic evaluation.
 \begin{code}
