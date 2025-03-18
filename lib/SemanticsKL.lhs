@@ -19,7 +19,6 @@ import qualified Data.Set as Set
 
 import Test.QuickCheck
 
-
 \end{code}
 
 \textbf{Worlds and Epistemic States}\\
