@@ -1,6 +1,6 @@
+% \section{$\mathcal{KL}$: Syntax and Semantics}\label{sec:KLmodel}
 
-
-\subsection{Semantics of $\mathcal{KL}$}\label{subsec:KLsemantics}
+\subsection{Semantics of \texorpdfstring{ $\mathcal{KL}$}{KL}}\label{subsec:KLsemantics}
 $\mathcal{KL}$ is an epistemic extension of first-order logic designed to model knowledge and uncertainty, as detailed in \textcite{Lokb}.
 It introduces a knowledge operator $K$ and uses an infinite domain $\mathcal{N}$ of standard names to denote individuals. 
 Formulas are evaluated in world states: consistent valuations of atoms and terms, while epistemic states capture multiple possible worlds, reflecting epistemic possibilities.\\
@@ -18,7 +18,6 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 
 import Test.QuickCheck
-
 
 \end{code}
 
