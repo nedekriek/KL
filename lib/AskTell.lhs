@@ -67,19 +67,13 @@ In addition to ASK and TELL, it is valuable to define an inital epistemic state.
 \begin{code}
 -- INITIAL operation (Section 5.3)
 -- Generate all possible world states for a finite set of atoms and terms
-allWorldStates :: [Atom] -> [Term] -> [StdName] -> [WorldState]
+allWorldStates :: [PrimitiveAtom] -> [PrimitiveTerm] -> [StdName] -> [WorldState]
 allWorldStates atoms terms domain = do
-  atomVals <- mapM (\_ -> [True, False]) atoms
-  termVals <- mapM (\t -> domain) terms
-  return $ mkWorldState (zip atoms atomVals) (zip terms termVals)
+   atomVals <- mapM (\_ -> [True, False]) atoms
+   termVals <- mapM (\t -> domain) terms
+   return $ mkWorldState (zip atoms atomVals) (zip terms termVals)
 
--- Helper to create a world state from atom and term assignments
-mkWorldState :: [(Atom, Bool)] -> [(Term, StdName)] -> WorldState
-mkWorldState atoms terms =
-  WorldState (Map.fromList atoms) (Map.fromList terms)
-
-
-initial :: [Atom] -> [Term] -> [StdName] -> EpistemicState
+initial :: [PrimitiveAtom] -> [PrimitiveTerm] -> [StdName] -> EpistemicState
 initial atoms terms domain = Set.fromList (allWorldStates atoms terms domain)
 
 
