@@ -1,4 +1,3 @@
-
 \section{Simple Tests}
 \label{sec:simpletests}
 

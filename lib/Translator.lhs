@@ -159,37 +159,6 @@ makeWorldState n =
 
 \end{code}
 
-%@Milan Could you move those functions to the section where they fit best?
-%I wasn't quite sure where to put them. 
-\begin{code}
-
--- Helper functions as provided
-uniqueProps :: ModForm -> [Proposition]
-uniqueProps f = nub (propsIn f)
-  where
-    propsIn (P k)       = [k]
-    propsIn (Neg g)     = propsIn g
-    propsIn (Con g h)   = propsIn g ++ propsIn h
-    propsIn (Box g)     = propsIn g
-    propsIn (Dia g)     = propsIn g
-
--- Generate all possible valuations explicitly
-allValuations :: [World] -> [Proposition] -> [Valuation]
-allValuations univ props = 
-  let subsetsP = subsequences props
-      assignToWorlds = sequence (replicate (length univ) subsetsP)
-  in [ \w -> let idx = length (takeWhile (/= w) univ)
-             in if idx < length univ then assignToWorlds !! idx else []
-     | assignToWorlds <- sequence (replicate (length univ) subsetsP) ]
-
--- Corrected isValid
-isValidKr :: ModForm -> KripkeModel -> Bool
-isValidKr f (KrM univ _ rel) = 
-  let props = uniqueProps f
-      valuations = allValuations univ props
-  in all (\v -> all (\w -> makesTrue (KrM univ v rel, w) f) univ) valuations
-\end{code}
-
 To be able to print Models, let's define a Show instance for IntKripkeModels, and for KripkeModels:
 \begin{code}
 instance Show IntKripkeModel where
@@ -348,44 +317,91 @@ isActuallyAtomic (Pred "P" [StdNameTerm (StdName _)]) = True
 isActuallyAtomic _ = False
 \end{code}
 
-%@Milan: Put your kripkeToKL with documentation here
-%@Milan: Ah, I now realise you were working with a different structure, where, instead of first dealing
-%with language, then with models, we deal first with KL to Kr, then with Kr to KL. I'm fine with either;
-%if you prefer your original version, just move my blocks of code/explanation to the right places.
-
 \subsection{Translation functions Kripke to KL}
 
 \subsection{Formulae}
 
 \begin{code}
 
+-- Translates an SEL formula (propositional modal logic) to a KL formula (predicate logic with knowledge operator).
 translateFormToKL :: ModForm -> Formula
-translateFormToKL (P n) = Atom (Pred "P" [StdNameTerm (StdName ("n" ++ show n))])
-translateFormToKL (Neg form) = Not (translateFormToKL form)
-translateFormToKL (Con form1 form2) = Not (Or (Not (translateFormToKL form1)) (Not (translateFormToKL form2)))
-translateFormToKL (Box form) = K (translateFormToKL form)
-translateFormToKL (Dia form) = Not (K (Not (translateFormToKL form)))
+translateFormToKL (P n) = Atom (Pred "P" [StdNameTerm (StdName ("n" ++ show n))])  -- Maps proposition P n to atom P(n), e.g., P 1 -> P(n1)
+translateFormToKL (Neg form) = Not (translateFormToKL form)                          -- Negation is preserved recursively
+translateFormToKL (Con form1 form2) = Not (Or (Not (translateFormToKL form1)) (Not (translateFormToKL form2)))  -- Conjunction as ¬(¬f1 ∨ ¬f2)
+translateFormToKL (Box form) = K (translateFormToKL form)                            -- Box (□) becomes K, representing knowledge
+translateFormToKL (Dia form) = Not (K (Not (translateFormToKL form)))                -- Diamond (◇) as ¬K¬, representing possibility
 
 \end{code}
 
 \subsection{Models}
 
+KL models (Knowledge Logic models) and Kripke models are frameworks used to represent an agent's knowledge in epistemic logic, but they differ in their structure and approach. A KL model explicitly separates:
+- An \textbf{actual world state}, representing what is true in the real world.
+- A set of \textbf{epistemic world states}, representing the worlds the agent considers possible based on their knowledge.
+
+In contrast, a Kripke model consists of:
+- A set of possible worlds.
+- An accessibility relation between worlds, where an agent knows a proposition \( p \) at a world \( w \) if \( p \) is true in all worlds accessible from \( w \).
+
+The task of translating a Kripke model into a KL model involves preserving both:
+1. \textbf{What is true} in the actual world.
+2. \textbf{What the agent knows} in that world.
+
+To perform this translation, we take a Kripke model and a specified world \( w \) (designated as the actual world) and construct a KL model where:
+- The \textbf{actual world state} corresponds to \( w \).
+- The \textbf{epistemic state} consists of all worlds accessible from \( w \) in the Kripke model.
+
+However, not all Kripke models can be straightforwardly translated into KL models while maintaining the semantics of knowledge as defined in KL. In KL, knowledge of a proposition \( p \) means that \( p \) is true in all world states within the epistemic state. This imposes specific requirements on the structure of the Kripke model’s accessibility relation to ensure compatibility with KL’s properties of knowledge.
+
+\subsubsection*{Restrictions on Kripke Models: Transitivity and Euclideanness}
+
+In KL, knowledge exhibits introspective properties, such as:
+- \textbf{Positive introspection}: If an agent knows \( p \), then they know that they know \( p \) (formally, \( Kp \rightarrow KKp \)).
+- \textbf{Negative introspection}: If an agent does not know \( p \), then they know that they do not know \( p \) (formally, \( \neg Kp \rightarrow K\neg Kp \)).
+
+These properties imply that the epistemic state must be consistent and stable across all worlds the agent considers possible. Specifically, for any proposition \( p \), the formula \( KKp \) (the agent knows that they know \( p \)) should hold if and only if \( Kp \) (the agent knows \( p \)) holds. This equivalence requires the set of worlds in the epistemic state to have a uniform structure.
+
+To capture these introspective properties in a Kripke model, the accessibility relation must satisfy:
+- \textbf{Transitivity}: If world \( w \) can access world \( v \) (i.e., \( w \rightarrow v \)), and \( v \) can access world \( u \) (i.e., \( v \rightarrow u \)), then \( w \) must access \( u \) (i.e., \( w \rightarrow u \)). This ensures that the agent’s knowledge extends consistently across all accessible worlds, supporting positive introspection.
+- \textbf{Euclideanness}: If \( w \rightarrow v \) and \( w \rightarrow u \), then \( v \rightarrow u \). This means that any two worlds accessible from \( w \) must be accessible to each other, which is necessary for negative introspection.
+
+When a Kripke model’s accessibility relation is both transitive and Euclidean, the set of worlds accessible from \( w \) forms an \textbf{equivalence class}. In an equivalence class:
+- Every world is accessible from every other world (including itself, implying reflexivity).
+- The set is fully connected, meaning the agent’s knowledge is uniform across all worlds in the epistemic state.
+
+This fully connected structure aligns with the KL model’s epistemic state, where a proposition is known only if it holds in all possible worlds the agent considers. If the worlds accessible from \( w \) did not "see each other" (i.e., were not mutually accessible), introspective knowledge claims like \( KKp \leftrightarrow Kp \) could not be preserved, as the agent’s knowledge would vary inconsistently across the accessible worlds.
+
+\subsubsection*{The Actual World and the Possibility of Knowing Falsehoods}
+
+A key feature of KL models is that the agent can know something false. This means that the actual world state (representing the true state of affairs) does not necessarily belong to the epistemic state (the worlds the agent considers possible). For example, an agent might believe a false proposition, leading them to exclude the actual world from their epistemic state. In the translation from a Kripke model to a KL model:
+- We designate \( w \) as the actual world state.
+- The epistemic state includes only the worlds accessible from \( w \), which may or may not include \( w \) itself.
+
+This flexibility distinguishes KL models from some traditional Kripke-based systems (e.g., S5, where the actual world is typically accessible due to reflexivity), allowing KL to model scenarios where an agent’s knowledge deviates from reality.
+
+\subsubsection*{Conditions for Translation}
+
+To successfully translate a Kripke model into a KL model:
+- The accessibility relation must be \textbf{transitive and Euclidean}, ensuring that the worlds accessible from \( w \) form an equivalence class.
+- The translation process then:
+  - Sets the actual world state of the KL model to \( w \).
+  - Defines the epistemic state as the set of all worlds accessible from \( w \) in the Kripke model.
+
+If the Kripke model’s accessibility relation is not transitive and Euclidean, the translation cannot preserve the introspective properties of knowledge required by KL, and thus it fails. In practice, this restriction is implemented in the function below, which:
+- Takes a Kripke model and a world \( w \) as input.
+- Verifies that the accessibility relation satisfies transitivity and Euclideanness.
+- Returns a KL model if the conditions are met, or an indication of failure (e.g., `Nothing`) otherwise.
+
+\subsubsection*{Example and Intuition}
+
+Consider a Kripke model with worlds \( \{w, v, u\} \), where:
+- \( w \rightarrow v \) and \( w \rightarrow u \), but \( v \not\rightarrow u \) (not Euclidean).
+- At \( w \), the agent knows \( p \) if \( p \) is true in \( v \) and \( u \).
+
+If \( p \) is true in \( v \) and \( u \), then \( Kp \) holds at \( w \). However, for \( KKp \) to hold, \( Kp \) must be true in both \( v \) and \( u \). If \( v \not\rightarrow u \), then \( Kp \) might not hold at \( v \) (since \( v \) does not access \( u \)), breaking the equivalence \( KKp \leftrightarrow Kp \). In a KL model, the epistemic state must ensure mutual accessibility to avoid such inconsistencies, which is why transitivity and Euclideanness are required.
+
+
 \begin{code}
-
--- Helper: Map proposition to atom
-propToAtom :: Proposition -> Atom
-propToAtom n = Pred "P" [StdNameTerm (StdName ("n" ++ show n))]
-
--- Helper: Create a WorldState from a list of propositions
-createWorldState :: [Proposition] -> WorldState
-createWorldState props =
-  let atomVals = Map.fromList [(propToAtom p, True) | p <- props]
-      termVals = Map.empty  -- No term values for simplicity
-  in WorldState atomVals termVals
-
--- Check if a world is in the universe
-isInUniv :: WorldState -> [WorldState] -> Bool
-isInUniv w univ = elem w univ
 
 -- Main function: Convert Kripke model to KL model
 kripkeToKL :: KripkeModel -> WorldState -> Maybe Model
@@ -404,19 +420,55 @@ kripkeToKL kr@(KrM univ val rel) w
 
     -- Domain (empty for simplicity)
     newDomain = Set.empty
---Derive Dis
+
+-- Maps an SEL proposition to a KL atom
+propToAtom :: Proposition -> Atom
+propToAtom n = Pred "P" [StdNameTerm (StdName ("n" ++ show n))]  -- e.g., 1 -> P(n1)
+
+-- Creates a KL WorldState from a list of propositions
+createWorldState :: [Proposition] -> WorldState
+createWorldState props =
+  let atomVals = Map.fromList [(propToAtom p, True) | p <- props]  -- Maps each proposition to True
+      termVals = Map.empty                                          -- No term valuations needed here
+  in WorldState atomVals termVals
+
+-- Checks if a world is in the Kripke model’s universe
+isInUniv :: WorldState -> [WorldState] -> Bool
+isInUniv w univ = elem w univ  -- Simple membership test
+
+-- Helper: functions as provided
+uniqueProps :: ModForm -> [Proposition]
+uniqueProps f = nub (propsIn f)
+  where
+    propsIn (P k)       = [k]
+    propsIn (Neg g)     = propsIn g
+    propsIn (Con g h)   = propsIn g ++ propsIn h
+    propsIn (Box g)     = propsIn g
+    propsIn (Dia g)     = propsIn g
+
+-- Generate all possible valuations explicitly
+allValuations :: [World] -> [Proposition] -> [Valuation]
+allValuations univ props = 
+  let subsetsP = subsequences props
+      assignToWorlds = sequence (replicate (length univ) subsetsP)
+  in [ \w -> let idx = length (takeWhile (/= w) univ)
+             in if idx < length univ then assignToWorlds !! idx else []
+     | assignToWorlds <- sequence (replicate (length univ) subsetsP) ]
+
+-- Checks whether a Kripke formula is valid on a given Kripke model 
+isValidKr :: ModForm -> KripkeModel -> Bool
+isValidKr f (KrM univ _ rel) = 
+  let props = uniqueProps f
+      valuations = allValuations univ props
+  in all (\v -> all (\w -> makesTrue (KrM univ v rel, w) f) univ) valuations
+
+-- Checks if a Kripke model is Euclidean
 isEuclidean :: KripkeModel -> Bool
-isEuclidean krm
-        | isValidKr (disj (Box (Neg (P 1))) (Box (Dia (P 1)))) krm = True
-        | otherwise = False
+isEuclidean krm = isValidKr (disj (Box (Neg (P 1))) (Box (Dia (P 1)))) krm  -- □¬P1 ∨ □◇P1 holds for Euclidean relations
 
-
+-- Checks if a Kripke model is transitive
 isTransitive :: KripkeModel -> Bool
-isTransitive krm 
-        | isValidKr (disj (Neg (Box (P 1))) (Box (Box (P 1)))) krm = True
-        | otherwise = False
-
-
+isTransitive krm = isValidKr (disj (Neg (Box (P 1))) (Box (Box (P 1)))) krm  -- ¬□P1 ∨ □□P1 holds for transitive relations
 \end{code}
 
 
@@ -530,14 +582,170 @@ model1' = Model w1 e1' domain1
 test3 :: Bool
 test3 = translateKrToKrInt (translateModToKr model1) == translateKrToKrInt (translateModToKr model1')
 
--- once Milan's functions have been added:
--- tests for seeing whether the translations interact with their
+-- Add tests for seeing whether the translations interact with their
 -- “inverses” in the right way
 \end{code}
 
-MILAN'S EXAMPLES AND TESTS:
+\subsection{Tests for Translation from Kripke to KL}
 
-To be able to test this, I will add some Kripke Models
+\subsection{Tests for formulae}
+
+\begin{code}
+-- Test translation of atomic proposition
+testAtomic :: Bool
+testAtomic = let g = P 1
+                 klForm = translateFormToKL g
+                 expected = Atom (Pred "P" [StdNameTerm (StdName "n1")])
+             in klForm == expected
+
+-- Test translation of negation
+testNegation :: Bool
+testNegation = let g = Neg (P 1)
+                   klForm = translateFormToKL g
+                   expected = Not (Atom (Pred "P" [StdNameTerm (StdName "n1")]))
+               in klForm == expected
+
+-- Test translation of conjunction
+testConjunction :: Bool
+testConjunction = let g = Con (P 1) (P 2)
+                      klForm = translateFormToKL g
+                      expected = Not (Or (Not (Atom (Pred "P" [StdNameTerm (StdName "n1")]))) 
+                                        (Not (Atom (Pred "P" [StdNameTerm (StdName "n2")]))))
+                  in klForm == expected
+
+-- Test translation of box operator
+testBox :: Bool
+testBox = let g = Box (P 1)
+              klForm = translateFormToKL g
+              expected = K (Atom (Pred "P" [StdNameTerm (StdName "n1")]))
+          in klForm == expected
+
+-- Test translation of diamond operator
+testDiamond :: Bool
+testDiamond = let g = Dia (P 1)
+                  klForm = translateFormToKL g
+                  expected = Not (K (Not (Atom (Pred "P" [StdNameTerm (StdName "n1")]))))
+              in klForm == expected
+
+-- Test invertibility of a simple formula translation
+testFormInvertSimple :: Bool
+testFormInvertSimple = let g = Box (P 1)
+                           klForm = translateFormToKL g
+                           selForm = fromJust (translateFormToKr klForm)
+                       in selForm == g
+
+-- Test invertibility of a complex formula translation
+testFormInvertComplex :: Bool
+testFormInvertComplex = let g = Box (Con (P 1) (Neg (P 2)))
+                            klForm = translateFormToKL g
+                            selForm = fromJust (translateFormToKr klForm)
+                        in selForm == g
+
+-- Aggregate all formula tests with diagnostic output
+testAllFormulae :: String
+testAllFormulae = 
+  let results = [ ("testAtomic", testAtomic)
+                , ("testNegation", testNegation)
+                , ("testConjunction", testConjunction)
+                , ("testBox", testBox)
+                , ("testDiamond", testDiamond)
+                , ("testFormInvertSimple", testFormInvertSimple)
+                , ("testFormInvertComplex", testFormInvertComplex)
+                ]
+      failures = [name | (name, result) <- results, not result]
+  in if null failures
+     then "All formula tests passed"
+     else "Failed formula tests: " ++ unwords failures
+
+\end{code}
+
+\subsection{Tests for Models}
+
+\begin{code}
+-- Helper function to test truth preservation
+testTruthPres :: KripkeModel -> WorldState -> ModForm -> Bool
+testTruthPres km w g = 
+  case kripkeToKL km w of
+    Nothing -> False  -- Translation failed, so truth not preserved
+    Just klModel -> let klFormula = translateFormToKL g
+                    in makesTrue (km, w) g == satisfiesModel klModel klFormula
+
+-- Test translation succeeds for S5 model
+testTranslationSucceedsModel3 :: Bool
+testTranslationSucceedsModel3 = isJust (kripkeToKL exampleModel3 (makeWorldState 30))
+
+-- Test translation succeeds for clustered model
+testTranslationSucceedsModel6 :: Bool
+testTranslationSucceedsModel6 = isJust (kripkeToKL exampleModel6 (makeWorldState 60))
+
+-- Test translation fails for linear non-transitive model
+testTranslationFailsModel2 :: Bool
+testTranslationFailsModel2 = isNothing (kripkeToKL exampleModel2 (makeWorldState 20))
+
+-- Test translation fails for cyclic non-transitive model
+testTranslationFailsModel5 :: Bool
+testTranslationFailsModel5 = isNothing (kripkeToKL exampleModel5 (makeWorldState 50))
+
+-- Test truth preservation for atomic proposition in S5 model
+testTruthPresP1Model3 :: Bool
+testTruthPresP1Model3 = testTruthPres exampleModel3 (makeWorldState 30) (P 1)
+
+-- Test truth preservation for box operator in S5 model
+testTruthPresBoxP1Model3 :: Bool
+testTruthPresBoxP1Model3 = testTruthPres exampleModel3 (makeWorldState 30) (Box (P 1))
+
+-- Test truth preservation for diamond operator in S5 model
+testTruthPresDiaP1Model3 :: Bool
+testTruthPresDiaP1Model3 = testTruthPres exampleModel3 (makeWorldState 30) (Dia (P 1))
+
+-- Test truth preservation for conjunction in clustered model
+testTruthPresConModel6 :: Bool
+testTruthPresConModel6 = testTruthPres exampleModel6 (makeWorldState 60) (Con (P 1) (P 2))
+
+-- Test model invertibility for S5 model
+testModelInvertModel3 :: Bool
+testModelInvertModel3 = let km = exampleModel3
+                            w = makeWorldState 30
+                            klm = fromJust (kripkeToKL km w)
+                            kmBack = translateModToKr klm
+                        in kmBack == km
+
+-- Test contradiction is false in modelKL7
+testContradictionFalseModel7 :: Bool
+testContradictionFalseModel7 = not (checkModel modelKL7 (translateFormToKL (Con (P 2) (Neg (P 2)))))
+
+-- Test reflexivity axiom false in modelKL7 (w70 not reflexive)
+testRefFalseModel7 :: Bool
+testRefFalseModel7 = not (checkModel modelKL7 ref)
+
+-- Test reflexivity axiom true in modelKL7b (w71 in cluster)
+testRefTrueModel7b :: Bool
+testRefTrueModel7b = checkModel modelKL7b ref
+
+-- Aggregate all model tests with diagnostic output
+testAllModels :: String
+testAllModels = 
+  let results = [ ("testTranslationSucceedsModel3", testTranslationSucceedsModel3)
+                , ("testTranslationSucceedsModel6", testTranslationSucceedsModel6)
+                , ("testTranslationFailsModel2", testTranslationFailsModel2)
+                , ("testTranslationFailsModel5", testTranslationFailsModel5)
+                , ("testTruthPresP1Model3", testTruthPresP1Model3)
+                , ("testTruthPresBoxP1Model3", testTruthPresBoxP1Model3)
+                , ("testTruthPresDiaP1Model3", testTruthPresDiaP1Model3)
+                , ("testTruthPresConModel6", testTruthPresConModel6)
+                , ("testModelInvertModel3", testModelInvertModel3)
+                , ("testContradictionFalseModel7", testContradictionFalseModel7)
+                , ("testRefFalseModel7", testRefFalseModel7)
+                , ("testRefTrueModel7b", testRefTrueModel7b)
+                ]
+      failures = [name | (name, result) <- results, not result]
+  in if null failures
+     then "All model tests passed"
+     else "Failed model tests: " ++ unwords failures
+
+\end{code}
+
+\subsection{example models used to test the translations from Kripke to KL}
 
 \begin{code}
 --IntegerKripkeModel to KripkeModel
@@ -735,56 +943,5 @@ intModel7 = IntKrM intUniverse7 intValuation7 intRelation7
 
 exampleModel7 :: KripkeModel
 exampleModel7 = convertToWorldStateModel intModel7
-
-\end{code}
-
-\subsection{Tests}
-
-\subsection{Tests for Kripke to KL}
-
-\begin{code}
-
-modelKL3 :: Model
-modelKL3 = fromJust(kripkeToKL exampleModel3 (makeWorldState 30))
-
-modelKL4 :: Model
-modelKL4 = fromJust(kripkeToKL exampleModel4 (makeWorldState 40))
-
-modelKL5 :: Model
-modelKL5 = fromJust(kripkeToKL exampleModel5 (makeWorldState 50))
-
-modelKL6 :: Model
-modelKL6 = fromJust(kripkeToKL exampleModel6 (makeWorldState 60))
-
-modelKL7 :: Model
-modelKL7 = fromJust(kripkeToKL exampleModel7 (makeWorldState 70))
-
-modelKL7b :: Model
-modelKL7b = fromJust(kripkeToKL exampleModel7 (makeWorldState 71))
-
-ref :: Formula
-ref = translateFormToKL (impl (Box (P 1)) (P 1))
-
-conTest :: Formula
-conTest = translateFormToKL (Con (P 1) (P 2))
-
-boxTest :: Formula
-boxTest = translateFormToKL (Box (P 1))
-
-diaTest :: Formula
-diaTest = translateFormToKL (Dia (P 1))
-
-negTest :: Formula
-negTest = translateFormToKL (Neg (P 1))
-
-test7 :: Bool
-test7 = checkModel modelKL7 (translateFormToKL (Con (P 2) (Neg (P 2))))
-
-testref :: Bool
-testref = checkModel modelKL7 ref
-
-testrefb :: Bool
-testrefb = checkModel modelKL7b ref
-
 
 \end{code}
