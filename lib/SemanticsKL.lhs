@@ -237,16 +237,16 @@ groundFormula f dom = groundFormula' f >>= groundExists dom
       return $ foldl (\acc (v, n) -> subst v n acc) formula (zip fvs subs)
 
     -- Recursively eliminate Exists in a formula
-    groundExists dom formula = case formula of
-      Exists x f' -> map (\n -> subst x n f') (Set.toList dom) >>= groundExists dom
+    groundExists domainEx formula = case formula of
+      Exists x f' -> map (\n -> subst x n f') (Set.toList domainEx) >>= groundExists domainEx
       Atom a -> [Atom a]
       Equal t1 t2 -> [Equal t1 t2]
-      Not f' -> map Not (groundExists dom f')
+      Not f' -> map Not (groundExists domainEx f')
       Or f1 f2 -> do
-        g1 <- groundExists dom f1
-        g2 <- groundExists dom f2
+        g1 <- groundExists domainEx f1
+        g2 <- groundExists domainEx f2
         return $ Or g1 g2
-      K f' -> map K (groundExists dom f')
+      K f' -> map K (groundExists domainEx f')
 
 
 \end{code}
