@@ -9,10 +9,6 @@ import GHC.Num
 -- importing syntax and semantics of KL
 import SyntaxKL
 import SemanticsKL
---import Data.Map (Map)
---import qualified Data.Map as Map
---import Data.Set (Set)
---import qualified Data.Set as Set
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -42,7 +38,12 @@ We want to compare KL and Standard Epistemic Logic based on Kripke frames.
 For example, we might want to compare the complexity of model checking
 for KL and SEL. 
 To do this, we need some way of “translating” between formulas of KL and
-formulas of SEL, and between KL-models and Kripke frames.
+formulas of SEL, and between KL-models and Kripke frames. This would allow us to,
+e.g., (1) take a set of KL formulas of various lengths and a set of KL models
+of various sizes; (2) translate both formulas and models into SEL; (3) do model
+checking for both (i.e.. on the KL side, and on the SEL side); (4) compare how 
+time/memory scales with length of formula.
+
 Three things to note:
 \begin{enumerate}
     \item The language of KL is predicate logic, plus a knowledge operator.
@@ -59,10 +60,12 @@ Three things to note:
 
 \subsection{Syntax and Semantics of SEL}
 
-\subsubsection{Mathematical Description of the Syntax and Semantics of SEL}
-\subsubsubsection{Syntax}
-\subsubsubsection{Semantics}
-This is just basic modal logic, as we know it.
+The syntax and semantics of SEL is well-known: the language is just 
+the language of basic modal logic, where the Box operator is interpreted
+as “It is known that…”. Models are Kripke models. All this is known from HW2,
+so we focus on the implementation, here.
+%@Milan: Is this okay (for now), or do we need a more rigorous mathematical
+%treatment?
 \subsubsection{Implementation}
 \subsubsubsection{Syntax}
 
@@ -134,7 +137,7 @@ type IntRelation = [(IntWorld, IntWorld)]
 data IntKripkeModel = IntKrM IntUniverse IntValuation IntRelation
 \end{code}
 
-Sometime it will also be usefuel to convert between KripkeModels and IntKripkeModels. 
+Sometimes it will also be usefuel to convert between KripkeModels and IntKripkeModels. 
 To enable this, we provide the following functions:
 
 \begin{code}
@@ -171,8 +174,8 @@ makeWorldState n =
 
 \end{code}
 
-Note to self: What follows are some helper functions for Milan's stuff -> Could it make sense to 
-put them into another section, in the place where they are needed?
+%@Milan Could you move those functions to the section where they fit best?
+%I wasn't quite sure where to put them. 
 \begin{code}
 
 -- Helper functions as provided
@@ -204,21 +207,25 @@ isValidKr f (KrM univ _ rel) =
 
 To be able to print Models, let's define a Show instance for IntKripkeModels, and for KripkeModels:
 \begin{code}
--- I realise that following the convention that show should return what you need to type in to get define the object,
--- we shouldn't really call this a Show instance, but instead something like a print function
 instance Show IntKripkeModel where
    show (IntKrM uni val rel) = "IntKrM\n" ++ show uni ++ "\n" ++ show [(x, val x) | x <- uni ] ++ "\n" ++ show rel
-
--- we also define a Show Instance for KripkeModels, which just shows the KripkeModel, converted to an
--- IntKripkeModel
+\end{code}
+We also define a Show Instance for KripkeModels, which just shows the KripkeModel, converted to an
+IntKripkeModel; the rationale for this is that Integers look much nicer than WorldStates when printed.
+\begin{code}
 instance Show KripkeModel where
    show m = show $ translateKrToKrInt m
 \end{code}
+Note that we are breaking with the convention that the show function should return what you need to type into 
+ghci to define the object; however, we feel justified in doing this because of the greater user friendliness 
+it provides.
 
-Later, we will want to compare models for equality. So we'll also define an Eq instance. Comparison for
-equality will work, at least as long as models are finite.
+Later, we will want to compare models for equality; so we'll also define an Eq instance. Comparison for
+equality will work, at least as long as models are finite. The way this comparison works is by checking that 
+the valuations agree on all worlds in the model. By sorting before checking for equality, we ensure that the order in which 
+worlds appear in the list of worlds representing the universe, the order in which true propositions at a world appear, 
+and the order in which pairs appear in the relation doesn't affect the comparison.
 \begin{code}
--- we check that the valuations agree on all worlds in the model
 instance Eq KripkeModel where
    (KrM u v r) == (KrM u' v' r') = 
       (nub. sort) u == (nub. sort) u' && all (\w -> (nub. sort) (v w) ==  (nub. sort) (v' w)) u && (nub. sort) r == (nub. sort) r'
@@ -226,18 +233,16 @@ instance Eq KripkeModel where
 instance Eq IntKripkeModel where 
    (IntKrM u v r) == (IntKrM u' v' r') = 
       (nub. sort) u == (nub. sort) u' && all (\w -> (nub. sort) (v w) ==  (nub. sort) (v' w)) u && (nub. sort) r == (nub. sort) r'
--- NB: the following is possible:
--- Two KripkeModels are equal, we convert both to IntKripkeModels,
--- and the resulting IntKripkeModels are not equal.
--- Why is this possible? 
--- Because when checking for equality of KripkeModels, we ignore the order of worlds in the
--- list that defines the universe;
--- but for the conversion to IntKripkeModels, the order matters!
--- So we may get translateModToKr model1 == kripkeM1, but when we print
--- the lhs and rhs of the equation, we get different results.
--- This is perfectly fine, and not unexpected, since printing works
--- via converting to IntKripkeModels.
 \end{code}
+\emph{NB:} the following is possible: Two KripkeModels are equal, we convert both to IntKripkeModels,
+and the resulting IntKripkeModels are not equal. 
+
+Why is this possible? Because when checking for equality of KripkeModels, we ignore the order of worlds in the
+list that defines the universe; but for the conversion to IntKripkeModels, the order matters!
+
+Similarly, we may get translateModToKr model1 == kripkeM1, but when we print 
+the lhs and rhs of the equation, we get different results. This is perfectly fine, and not unexpected, 
+since printing of KripkeModels works via converting them to IntKripkeModels, and then printing them.
 
 \subsection{Translation functions: KL to Kripke}
 \subsubsection{Desiderata}
@@ -267,37 +272,20 @@ respect to a whole Kripke model, we translate from pairs of Kripke models and wo
 to KL models, rather than just from Kripke models to KL models. 
 
 Thus, these are the types of our translation functions:
-%I always wrote down, first, the type of the mathematical function, and then,
-%the Haskell type. But maybe that's unnecessary, and just the Haskell type would suffice?
 \begin{enumerate}
-\item A partial translation function $ translateFormToKr : \mathcal{L}_{KL} \to \mathcal{L}_{SEL} $.
-
-In Haskell: 
-\begin{verbatim}
+\item \begin{verbatim}
 translateFormToKr :: Formula -> Maybe ModForm
 \end{verbatim}
 
-\item A translation function $ translateFormToKL : \mathcal{L}_{SEL} \to \mathcal{L}_{KL} $.
-
-In Haskell: 
-\begin{verbatim}
+\item \begin{verbatim}
 translateFormToKr :: Formula -> Maybe ModForm
 \end{verbatim}
 
-\item A translation function $ translateModToKr : \mathcal{E} \to \mathcal{Kr} $, 
-where $ \mathcal{E}$ is the set of epistemic models, and $ \mathcal{Kr} $ is the 
-set of Kripke models.
-
-In Haskell: 
-\begin{verbatim}
+\item \begin{verbatim}
 translateModToKr :: Model -> KripkeModel
 \end{verbatim}
 
-\item A partial translation function $ kripkeToKL : \mathcal {KrP} \to \mathcal{E} $,
-where $ \mathcal{KrP} $ is the set of pointed Kripke models.
-
-In Haskell:
-\begin{verbatim}
+\item \begin{verbatim}
 kripkeToKL :: KripkeModel -> WorldState -> Maybe Model
 \end{verbatim}
 \end{enumerate}
@@ -326,50 +314,59 @@ any translatable Kripke model \begin{verbatim} KrM uni val rel \end{verbatim}, a
 %@Milan, do these look like the requirements we want to you?
 %We should add some tests to check that our functions actually do satisfy these!
 
-
-\subsubsection{Mathematical description of the translation functions}
-- definitions of the functions in terms of the mathematical description of KL models
-(this is provided by Lou), and the mathematical description of Kripke Models (from the
-previous section)
-- ideally a proof that the functions, so defined, satisfy the desiderata laid out
-in the previous section
+%Here, there was supposed to be a section with a mathematical description of our translation
+%functions. But I'm thinking this might be overkill. At least for now, it should suffice
+%to simply give the definitions in Haskell, and add an explanation of what the functions are doing. 
+%If you disagree, you can of course add the section back in.
 \subsubsection{Implementation}
 
-Now we finally get to the implementation of our translation functions.
+Now we get to the implementation of our translation functions.
 
-Translation functions for formulas:
+\underline{Translation functions for formulas:} \begin{verbatim} translateFormToKr \end{verbatim} replaces all of the atomic
+subformulas consisting of the predicate letter "P", followed by a standard name
+by propositional variables; it returns Nothing if the input formula doesn't satisfy
+this constraint.
 \begin{code}
--- from SEL Formula to KL formula
 translateFormToKr :: Formula -> Maybe ModForm
 translateFormToKr (Atom (Pred "P" [StdNameTerm (StdName nx)])) = Just $ P (read (drop 1 nx))    
 translateFormToKr (Not f)                        = fmap Neg $ translateFormToKr f           
 translateFormToKr (Or f g)                       = fmap disj (translateFormToKr f) <*> (translateFormToKr g)  
 translateFormToKr (K f)                          = fmap Box $ translateFormToKr f
 translateFormToKr _                              = Nothing
-
 \end{code}
+%@Milan: put your translateFormToKL with documentation below here
 
-Translation functions for models:
+\underline{Translation functions for models:} \begin{verbatim} translateModToKr \end{verbatim} takes an epistemic model, and creates a Kripke model, where 
+\begin{itemize}
+\item the worlds are all the world states in the epistemic state, plus the actual world state;
+\item for each world, the propositional variables true at it are the translations of the atomic formulas
+consisting of "P" followed by a standard name that are true at the world state;
+\item the from within the epistemic state all see each other, and the actual world sees all other worlds.
+\end{itemize}
 \begin{code}
--- from KL model to Kripke Model
 translateModToKr :: Model -> KripkeModel
 translateModToKr (Model w e d) = KrM (nub (w:(Set.toList e))) val (nub rel) where
    val = trueAtomicPropsAt
    rel = [(v, v') | v <- Set.toList e, v' <- Set.toList e] ++ [(w,v) | v <- Set.toList e]
 
---the next three are helper functions:
-atomicPropsKL :: [Atom]
-atomicPropsKL = [Pred "P" [StdNameTerm n] | n <- standardNames] 
+--the next two are helper functions:
 
+--identifies true atomic formulas at a world that consist of the predicate "P" followed by a standard name
 trueAtomicPropsAt :: WorldState -> [Proposition]
 trueAtomicPropsAt w = 
    map (\(Pred "P" [StdNameTerm (StdName nx)]) -> read (drop 1 nx)) trueActualAtoms where
       trueActualAtoms = filter isActuallyAtomic $ map fst (filter (\p -> snd p == True) (Map.toList (atomValues w)))
 
+--checks whether an atomic formula consists of the predicate "P" followed by a standard name
 isActuallyAtomic :: Atom -> Bool
 isActuallyAtomic (Pred "P" [StdNameTerm (StdName _)]) = True
 isActuallyAtomic _ = False
 \end{code}
+
+%@Milan: Put your kripkeToKL with documentation here
+%@Milan: Ah, I now realise you were working with a different structure, where, instead of first dealing
+%with language, then with models, we deal first with KL to Kr, then with Kr to KL. I'm fine with either;
+%if you prefer your original version, just move my blocks of code/explanation to the right places.
 
 \subsection{Translation functions Kripke to KL}
 
@@ -440,7 +437,9 @@ isTransitive krm
 
 \subsection{Tests}
 
-TODO: Now we write some tests to see whether these actually work.
+Here are some tests which, for now, you can run simply by typing the name of the test into ghci. 
+They should all return True. They are not yet complete, and after beta, we will integrate testing 
+of the translation functions with testing of the rest of the modules.
 
 \begin{code}
 -- tests for translateFormToKr
