@@ -142,7 +142,7 @@ main = hspec $ do
                 freeVars f `shouldBe` Set.fromList [x, y]
             it "freeVars returns the free variables in a complex formula" $ do
                 let f = (Exists x (Or (Or (Not px) pf) (Equal n1 n2)))
-                freeVars f `shouldBe` Set.fromList [x,y]
+                freeVars f `shouldBe` Set.fromList [y]
     -- Currently failing 
     describe "groundFormula" $ do
         it "groundFormula returns a ground formula (dependant on isGroundFormula passing all tests)" $ do
