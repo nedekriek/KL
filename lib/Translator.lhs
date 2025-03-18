@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 \section{Comparing KL and Epistemic Logic}
 \begin{code}
 module Translator where
@@ -10,11 +11,9 @@ import GHC.Num
 import SyntaxKL
 import SemanticsKL
 
-import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import GHC.Integer (bitInteger)
 \end{code}
 
 \subsection{Preliminaries}
@@ -133,7 +132,7 @@ translateKrToKrInt (KrM u v r) = IntKrM u' v' r' where
    u' = take (length ur) [0..] 
    v' n = v (intToWorldState ur n) where
       intToWorldState :: Universe -> Integer -> WorldState
-      intToWorldState ur n = ur !! integerToInt n
+      intToWorldState urc nq = urc !! integerToInt nq
    r' = [(worldStateToInt ur w, worldStateToInt ur w') | (w,w') <- r] where
       worldStateToInt :: Universe -> WorldState -> Integer
       worldStateToInt uni w = toInteger $ fromJust $ elemIndex w uni 
@@ -279,9 +278,9 @@ this constraint.
 \begin{code}
 translateFormToKr :: Formula -> Maybe ModForm
 translateFormToKr (Atom (Pred "P" [StdNameTerm (StdName nx)])) = Just $ P (read (drop 1 nx))    
-translateFormToKr (Not f)                        = fmap Neg $ translateFormToKr f           
-translateFormToKr (Or f g)                       = fmap disj (translateFormToKr f) <*> (translateFormToKr g)  
-translateFormToKr (K f)                          = fmap Box $ translateFormToKr f
+translateFormToKr (Not f)                        =  Neg <$> translateFormToKr f           
+translateFormToKr (Or f g)                       = fmap disj (translateFormToKr f) <*> translateFormToKr g 
+translateFormToKr (K f)                          = Box <$> translateFormToKr f
 translateFormToKr _                              = Nothing
 \end{code}
 
@@ -294,7 +293,7 @@ consisting of "P" followed by a standard name that are true at the world state;
 \end{itemize}
 \begin{code}
 translateModToKr :: Model -> KripkeModel
-translateModToKr (Model w e d) = KrM (nub (w:(Set.toList e))) val (nub rel) where
+translateModToKr (Model w e _) = KrM (nub (w:Set.toList e)) val (nub rel) where
    val = trueAtomicPropsAt
    rel = [(v, v') | v <- Set.toList e, v' <- Set.toList e] ++ [(w,v) | v <- Set.toList e]
 
@@ -304,7 +303,7 @@ translateModToKr (Model w e d) = KrM (nub (w:(Set.toList e))) val (nub rel) wher
 trueAtomicPropsAt :: WorldState -> [Proposition]
 trueAtomicPropsAt w = 
    map (\(Pred "P" [StdNameTerm (StdName nx)]) -> read (drop 1 nx)) trueActualAtoms where
-      trueActualAtoms = filter isActuallyAtomic $ map fst (filter (\p -> snd p == True) (Map.toList (atomValues w)))
+      trueActualAtoms = filter isActuallyAtomic $ map fst (filter snd (Map.toList (atomValues w)))
 
 --checks whether an atomic formula consists of the predicate "P" followed by a standard name
 isActuallyAtomic :: Atom -> Bool
@@ -432,7 +431,7 @@ createWorldState props =
 
 -- Checks if a world is in the Kripke model’s universe
 isInUniv :: WorldState -> [WorldState] -> Bool
-isInUniv w univ = elem w univ  -- Simple membership test
+isInUniv = elem  -- Simple membership test
 
 -- Helper: functions as provided
 uniqueProps :: ModForm -> [Proposition]
@@ -448,10 +447,11 @@ uniqueProps f = nub (propsIn f)
 allValuations :: [World] -> [Proposition] -> [Valuation]
 allValuations univ props = 
   let subsetsP = subsequences props
-      assignToWorlds = sequence (replicate (length univ) subsetsP)
+--      assignToWorlds = sequence (replicate (length univ) subsetsP)
   in [ \w -> let idx = length (takeWhile (/= w) univ)
              in if idx < length univ then assignToWorlds !! idx else []
-     | assignToWorlds <- sequence (replicate (length univ) subsetsP) ]
+     | assignToWorlds <- replicate (length univ) subsetsP  ----DRAMA?????
+ ]
 
 -- Checks whether a Kripke formula is valid on a given Kripke model 
 isValidKr :: ModForm -> KripkeModel -> Bool
@@ -462,11 +462,12 @@ isValidKr f (KrM univ _ rel) =
 
 -- Checks if a Kripke model is Euclidean
 isEuclidean :: KripkeModel -> Bool
-isEuclidean krm = isValidKr (disj (Box (Neg (P 1))) (Box (Dia (P 1)))) krm  -- □¬P1 ∨ □◇P1 holds for Euclidean relations
+isEuclidean = isValidKr (disj (Box (Neg (P 1))) (Box (Dia (P 1))))
+  -- □¬P1 ∨ □◇P1 holds for Euclidean relations
 
 -- Checks if a Kripke model is transitive
 isTransitive :: KripkeModel -> Bool
-isTransitive krm = isValidKr (disj (Neg (Box (P 1))) (Box (Box (P 1)))) krm  -- ¬□P1 ∨ □□P1 holds for transitive relations
+isTransitive = isValidKr (disj (Neg (Box (P 1))) (Box (Box (P 1))))  -- ¬□P1 ∨ □□P1 holds for transitive relations
 \end{code}
 
 
@@ -602,7 +603,7 @@ smallModels = [exampleModel1, exampleModel2, exampleModel3, exampleModel4,
 -- Test translation of atomic proposition
 testAtomic :: Bool
 testAtomic = let klForm = translateFormToKL (P 1)
-                 expected = (Atom (Pred "P" [StdNameTerm (StdName "n1")]))
+                 expected = Atom (Pred "P" [StdNameTerm (StdName "n1")])
              in klForm == expected
 
 -- Test translation of negation
@@ -679,18 +680,18 @@ areBisimilar km1 km2 =
       rel2 = relation km2
       val1 = valuation km1
       val2 = valuation km2
-      initialRel = [(w1, w2) | w1 <- univ1, w2 <- univ2, val1 w1 == val2 w2]
-      satisfiesBackForth r (w1, w2) =
-        (all (\v1 -> any (\v2 -> (v1, v2) `elem` r) (successors w2 rel2)) 
-             (successors w1 rel1)) &&
-        (all (\v2 -> any (\v1 -> (v1, v2) `elem` r) (successors w1 rel1)) 
-             (successors w2 rel2))
+      initialRel = [(w1, w2) | w1a <- univ1, w2a <- univ2, val1 w1a == val2 w2a]
+      satisfiesBackForth r (w1b, w2b) =
+        all (\v1 -> any (\v2 -> (v1, v2) `elem` r) (successors w2b rel2)) 
+             (successors w1b rel1) &&
+        all (\v2 -> any (\v1 -> (v1, v2) `elem` r) (successors w1b rel1)) 
+             (successors w2b rel2)
       largestBisimulation = until (\r -> r == filter (satisfiesBackForth r) r)
                                   (\r -> filter (satisfiesBackForth r) r)
                                   initialRel
   in not (null largestBisimulation) && 
-     all (\w1 -> any (\(w1', _) -> w1 == w1') largestBisimulation) univ1 && 
-     all (\w2 -> any (\(_, w2') -> w2 == w2') largestBisimulation) univ2
+     all (\w1c -> any (\(w1', _) -> w1c == w1') largestBisimulation) univ1 && 
+     all (\w2c -> any (\(_, w2'd) -> w2c == w2'd) largestBisimulation) univ2
   
 -- | Get successor worlds in a relation
 successors :: WorldState -> [(WorldState, WorldState)] -> [WorldState]
@@ -752,7 +753,7 @@ testContradictionFalseModel7 = not (checkModel modelKL7 (translateFormToKL (Con 
 
 -- Test reflexivity axiom false in modelKL7 (w70 not reflexive)
 testRefFalseModel7 :: Bool
-testRefFalseModel7 = (checkModel modelKL7 ref)
+testRefFalseModel7 = checkModel modelKL7 ref
 
 
 -- Test reflexivity axiom true in modelKL7b (w71 in cluster)
@@ -853,7 +854,7 @@ intValuation3 w
   | otherwise = [] -- No propositions elsewhere
 
 intRelation3 :: IntRelation
-intRelation3 = [(w1, w2) | w1 <- intUniverse3, w2 <- intUniverse3]  -- Fully connected
+intRelation3 = [(w1e, w2e) | w1e <- intUniverse3, w2e <- intUniverse3]  -- Fully connected
 
 intModel3 :: IntKripkeModel
 intModel3 = IntKrM intUniverse3 intValuation3 intRelation3
@@ -937,8 +938,8 @@ intValuation6 w
 intRelation6 :: IntRelation
 intRelation6 = let cluster1 = [60, 61, 62]  -- First cluster: fully connected
                    cluster2 = [63, 64]      -- Second cluster: fully connected
-               in [(w1, w2) | w1 <- cluster1, w2 <- cluster1] ++
-                  [(w1, w2) | w1 <- cluster2, w2 <- cluster2]
+               in [(w1f, w2f) | w1f <- cluster1, w2f <- cluster1] ++
+                  [(w1f, w2f) | w1f <- cluster2, w2f <- cluster2]
 
 intModel6 :: IntKripkeModel
 intModel6 = IntKrM intUniverse6 intValuation6 intRelation6
@@ -972,7 +973,7 @@ intValuation7 w
 
 intRelation7 :: IntRelation
 intRelation7 = let cluster = [71, 72, 73, 74, 75]
-               in [(70, w) | w <- cluster] ++ [(w1, w2) | w1 <- cluster, w2 <- cluster]
+               in [(70, w) | w <- cluster] ++ [(w1g, w2g) | w1g <- cluster, w2g <- cluster]
 
 intModel7 :: IntKripkeModel
 intModel7 = IntKrM intUniverse7 intValuation7 intRelation7
