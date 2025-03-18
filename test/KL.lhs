@@ -16,6 +16,7 @@ import Test.Hspec
 import Test.QuickCheck
 import Control.Exception (evaluate)
 \end{code}
+The following tests are for the semantics of $\mathcal{KL}$, which are defined in the SemanticsKL module. The tests are written using the Hspec testing framework and QuickCheck for property-based testing. The tests cover the evaluation of terms, formulas, and models, as well as model checking function. The Generators file provides helper functions for generating implementing testing, but have been omitted for brevity.
 
 \begin{code}
 main :: IO ()
@@ -138,10 +139,10 @@ main = hspec $ do
                 let f = Exists x (Or (Or (Not px) (Exists y py)) (Equal n1 n2))
                 freeVars f `shouldBe` Set.fromList []
             it "freeVars returns the free variables in a simple formula" $ do
-                let f = (Or (Or (Not px) py) (Equal n1 n2))
+                let f = Or (Or (Not px) py) (Equal n1 n2)
                 freeVars f `shouldBe` Set.fromList [x, y]
             it "freeVars returns the free variables in a complex formula" $ do
-                let f = (Exists x (Or (Or (Not px) pf) (Equal n1 n2)))
+                let f = Exists x (Or (Or (Not px) pf) (Equal n1 n2))
                 freeVars f `shouldBe` Set.fromList [y]
     describe "groundFormula" $ do
         it "groundFormula returns a ground formula (dependant on isGroundFormula passing all tests)" $ do

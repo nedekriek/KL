@@ -33,6 +33,10 @@ data WorldState = WorldState
    termValues :: Map Term StdName   --Maps (primitive) terms to standard names
   }  deriving (Eq, Ord, Show)
 
+instance Arbitrary WorldState where
+  arbitrary :: Gen WorldState
+  arbitrary = WorldState <$> arbitrary <*> arbitrary
+
 -- A set of possible world states, modeling epistemic possibilities
 type EpistemicState = Set WorldState
 
@@ -178,6 +182,10 @@ data Model = Model
   , epistemicState :: EpistemicState -- Set of possible world states
   , domain :: Set StdName          -- Domain of standard names
   } deriving (Show)
+
+instance Arbitrary Model where 
+  arbitrary:: Gen Model 
+  arbitrary = Model <$> arbitrary <*> arbitrary <*> arbitrary
 \end{code}
 
 A Model encapsulates an actual world, an epistemic state, and a domain, enabling the evaluation of formulas with the $K$operator. 
@@ -288,17 +296,4 @@ freeVars = variables False
 -- Collects all variables (free and bound) in a formula
 allVariables :: Formula -> Set Variable
 allVariables = variables True
-\end{code}
-\\
--- TODO: work out acceptable sizes for generated artifacts 
-\\
--- Semantics
-\begin{code}
-instance Arbitrary WorldState where
-  arbitrary :: Gen WorldState
-  arbitrary = WorldState <$> arbitrary <*> arbitrary
-
-instance Arbitrary Model where 
-  arbitrary:: Gen Model 
-  arbitrary = Model <$> arbitrary <*> arbitrary <*> arbitrary
 \end{code}
