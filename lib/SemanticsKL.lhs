@@ -52,7 +52,7 @@ mkWorldState :: [(PrimitiveAtom, Bool)] -> [(PrimitiveTerm, StdName)] -> WorldSt
 mkWorldState atoms terms =
   let convertAtom (PPred p ns, b) = (Pred p (map StdNameTerm ns), b)  -- Convert primitive atom to Atom
       convertTerm (PStdNameTerm n, v) = (StdNameTerm n, v)  -- Convert primitive term to Term
-      convertTerm (PFuncApp f ns, v) = (FuncApp f (map StdNameTerm ns), v)
+      convertTerm (PFuncAppTerm f ns, v) = (FuncAppTerm f (map StdNameTerm ns), v)
       atomList = map convertAtom atoms
       termList = map convertTerm terms
   in WorldState (Map.fromList (checkDups atomList)) (Map.fromList (checkDups termList))
@@ -76,7 +76,7 @@ This way, we can, if needed, check whether a given term or atom is primitive and
 -- Checks if a term is primitive (contains only standard names)
 isPrimitiveTerm :: Term -> Bool
 isPrimitiveTerm (StdNameTerm _) = True
-isPrimitiveTerm (FuncApp _ args) = all isStdName args
+isPrimitiveTerm (FuncAppTerm _ args) = all isStdName args
   where isStdName (StdNameTerm _) = True
         isStdName _ = False
 isPrimitiveTerm _ = False
