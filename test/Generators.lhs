@@ -47,5 +47,8 @@ genGroundFormula = sized genFormula
 
 -- Generator for a set of StdName values
 genStdNameSet :: Gen (Set StdName)
-genStdNameSet = Set.fromList <$> listOf arbitrary 
+genStdNameSet = sized $ \n -> do
+  let m = min n 5
+  size <- choose (0, m)
+  Set.fromList <$> vectorOf size arbitrary
 \end{code}

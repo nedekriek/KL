@@ -221,7 +221,8 @@ checkModel m phi = all (satisfiesModel m) (groundFormula phi (domain m))
 \end{code}
 
 Note that we use the function groundFormula here. 
-Since we have implemented satisfiesModel such that it assumes ground formulas or errors out, we decided to handle free variables by grounding formulas by substituting free variables. 
+Since we have implemented satisfiesModel such that it assumes ground formulas or errors out, we decided to handle free variables by grounding formulas, given a set of free standard names to substitute. 
+Alternatives, would be to error or always substitute the same standard name. The the implementation that we have chosen is more flexible and allows for more varied usage, however it is computationally expensive (We would appreciate it if you have suggestions to improve this).
 We implement groundFormula as follows:
 
 \begin{code}
