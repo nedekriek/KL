@@ -1,6 +1,7 @@
 \documentclass[12pt,a4paper]{article}
 \input{latexmacros.tex}
 
+
 \title{My Report}
 \author{Me}
 \date{\today}
@@ -26,17 +27,21 @@ We use the listings package to typeset Haskell source code nicely.
 % We include one file for each section. The ones containing code should
 % be called something.lhs and also mentioned in the .cabal file.
 
-\input{Howto.tex}
+%\input{Howto.tex}
 
-\input{lib/Basics.lhs}
 
-\input{lib/SemanticsKL.lhs}
+\section{$\mathcal{KL}$: Syntax and Semantics}\label{sec:KLmodel}
+
+\input{lib/SyntaxKL.lhs}
+
+%\input{lib/SemanticsKL.lhs}
+
 
 \input{exec/Main.lhs}
 
-\input{test/simpletests.lhs}
+%\input{test/simpletests.lhs}
 
-\input{Conclusion.tex}
+%\input{Conclusion.tex}
 
 \addcontentsline{toc}{section}{Bibliography}
 \bibliographystyle{alpha}
