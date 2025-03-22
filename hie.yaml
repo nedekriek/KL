@@ -9,5 +9,5 @@ cradle:
     - path: "./exec/Paths_KL.hs"
       component: "KL:exe:myprogram"
 
-    - path: "./test/specs"
+    - path: "./test"
       component: "KL:test:all-tests"  # The test component from package.yaml
