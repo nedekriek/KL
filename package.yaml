@@ -29,11 +29,13 @@ executables:
       - KL
 
 tests:
-  KL:
-    main: KL.lhs
+  all-tests:
     source-dirs: test
+    main: Spec.lhs  
     dependencies:
-      - KL
-      - base
       - hspec
       - QuickCheck
+      - KL
+    build-tools:
+      - hspec-discover
+    hs-source-dirs: test/specs # Notify HSpec Discover to look for specs here
