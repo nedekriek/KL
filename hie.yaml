@@ -10,4 +10,4 @@ cradle:
       component: "KL:exe:myprogram"
 
     - path: "./test"
-      component: "KL:test:KL"
+      component: "KL:test:all-tests"  # The test component from package.yaml
