@@ -6,7 +6,13 @@ all: report.pdf build
 report.pdf: *.tex lib/*.lhs test/*.lhs exec/*.lhs references.bib
 	latexmk -pdf -synctex=1 -interaction=nonstopmode report
 
-build:
+bib: report.bcf
+	biber report
+
+again: *.tex lib/*.lhs test/*.lhs exec/*.lhs references.bib report.bbl
+	latexmk -pdf -synctex=1 -interaction=nonstopmode report
+
+build: 
 	stack build
 
 run:
