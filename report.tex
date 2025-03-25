@@ -6,14 +6,14 @@
 \author{Natasha De Kriek, Milan Hartwig, Victor Joss, Paul Weston, Louise Wilk}
 \date{\today}
 \hypersetup{pdfauthor={Me}, pdftitle={My Report}}
-\bibliography{references.bib}
+\addbibresource{references.bib}
 \begin{document}
 
 \maketitle
 
 \begin{abstract}
 In this project, we aim to implement the first-order epistemic logic $\mathcal{KL}$ as introduced by \textcite{levesque1981} and refined by \textcite{Lokb}. 
-The semantics for this logic evaluates formulae on world states and epistemic states where world states are sets of formulae that are true at the world and epistemic states are sets of world states that are epistemically accessible. Levesque and Lakemeyer use the language $\mathcal{KL}$ as “a way of communicating with a knowledge base” (ibid. p. 79). For this, they define an ASK- and a TELL-operation on a knowledge base. In our project, we implement a  $\mathcal{KL}$-model, the ASK- and TELL- operations, a tableau-based satisfiablity and validity checking for  $\mathcal{KL}$, as well as compare  $\mathcal{KL}$-models to epistemic Kripke models and implement a translation function between them.
+The semantics for this logic evaluates formulae on world states and epistemic states where world states are sets of formulae that are true at the world and epistemic states are sets of world states that are epistemically accessible. Levesque and Lakemeyer use the language $\mathcal{KL}$ as ``a way of communicating with a knowledge base'' (ibid. p. 79). For this, they define an ASK- and a TELL-operation on a knowledge base. In our project, we implement a  $\mathcal{KL}$-model, the ASK- and TELL- operations, a tableau-based satisfiablity and validity checking for  $\mathcal{KL}$, as well as compare  $\mathcal{KL}$-models to epistemic Kripke models and implement a translation function between them.
 \end{abstract}
 
 % \vfill
@@ -24,8 +24,6 @@ The semantics for this logic evaluates formulae on world states and epistemic st
 
 % We include one file for each section. The ones containing code should
 % be called something.lhs and also mentioned in the .cabal file.
-
-%\input{Howto.tex}
 
 
 \section{\texorpdfstring{$\mathcal{KL}$}{KL}: Syntax and Semantics}\label{sec:KLmodel}
@@ -38,11 +36,9 @@ The semantics for this logic evaluates formulae on world states and epistemic st
 \input{lib/AskTell.lhs}
 
 % MISSING TRANSLATION MODULE
-\input{lib/Translator.lhs}
+% \input{lib/Translator.lhs}
 
 \input{lib/Tableau.lhs}
-
-\input{test/KL.lhs}
 
 % \input{exec/Main.lhs}
 
@@ -68,12 +64,21 @@ Conversely, translate an SEL formula like let g = Box (P 1) to KL with translate
 For models, create a KL model with let m = model1 and convert it to a Kripke model using translateModToKr m, then compare with kripkeM1 via test1. You can try out the Kripke-to-KL translation by using kripkeToKL exampleModel3 (makeWorldState 30), checking if it succeeds. You could also run some of our predefined tests like ftest1 or testAllFormulae to get to know our translation functions.
 
 \subsection{Tests}
-You can run all the tests and examine the current code coverage run `stack clean && stack test --coverage`.'
+You can run all the tests and examine the current code coverage run \verb|stack clean && stack test --coverage|.
+
+% importing tests
+\input{test/Generators.lhs}
+\input{test/AskTellSpec.lhs}
+\input{test/SemanticsKLSpec.lhs}
+\input{test/SyntaxKLSpec.lhs}
+\input{test/TableauSpec.lhs}
+\input{test/TranslatorSpec.lhs}
 
 %\input{Conclusion.tex}
 
 \addcontentsline{toc}{section}{Bibliography}
 % \bibliographystyle{alpha}
 
+\printbibliography
 
 \end{document}

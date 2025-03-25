@@ -49,7 +49,7 @@ as “It is known that…”. Models are Kripke models. All this is known from H
 so we focus on the implementation, here.
 
 \subsubsection{Implementation}
-\subsubsubsection{Syntax}
+\subsubsection{Syntax}
 
 \begin{code}
 data ModForm = P Proposition
@@ -70,7 +70,7 @@ This is taken from HW2, with one modification: we use "Neg" instead of "Not" as 
 for negated modal formula, since "Not" is already being used as a type constructor for KL-formulas 
 (see "SyntaxKL" for details).
 
-\subsubsubsection{Semantics}
+\underline{\textbf{Semantics}}
 
 To represent Kripke Models, we will use the types from HW 2, with a twist: we let
 the worlds be WorldStates, as defined in "Semantics". This simplifies the translation
@@ -243,24 +243,28 @@ kripkeToKL :: KripkeModel -> WorldState -> Maybe Model
 
 What constraints do we want our translation functions to satisfy? We propose that reasonable
 translation functions should at least satisfy these constraints: for any KL model 
-\begin{verbatim} Model w e d \end{verbatim}, any translatable KL formula \begin{verbatim} f \end{verbatim},
-any translatable Kripke model \begin{verbatim} KrM uni val rel \end{verbatim}, and any SEL formula
-\begin{verbatim} g \end{verbatim},
+\verb?Model w e d?, any translatable KL formula \verb?f?,
+any translatable Kripke model \verb?KrM uni val rel?, and any SEL formula
+\verb?g?,
 \begin{enumerate}
 %truth values should be preserved
-\item \begin{verbatim} Model w e d |= f \end{verbatim} iff
-\begin{verbatim} (translateModToKr (Model w e d)) w |= fromJust (translateFormToKr f )\end{verbatim}
+\item \verb?Model w e d |= f? iff
+\newline
+\verb?(translateModToKr (Model w e d)) w |= fromJust (translateFormToKr f )?
 
-\item \begin{verbatim} (KrM uni val rel) w |= g \end{verbatim} iff 
-\begin{verbatim} fromJust (kripkeToKL (KrM uni val rel) w) |= translateFormToKL g\end{verbatim}
+\item \verb?(KrM uni val rel) w |= g? iff 
+\newline
+\verb?fromJust (kripkeToKL (KrM uni val rel) w) |= translateFormToKL g?
 
 %Translating formulas back and forth shouldn't change anything:
-\item \begin{verbatim} fromJust (translateFormToKL (translateFormToKr f )) = f\end{verbatim}
-\item \begin{verbatim} translateFormToKr (fromJust (translateFormToKL g )) = g\end{verbatim}
+\item \verb?fromJust (translateFormToKL (translateFormToKr f )) = f?
+\item \verb?translateFormToKr (fromJust (translateFormToKL g )) = g?
 
 %Translating models back and forth shouldn't change anything:
-\item \begin{verbatim} fromJust (kripkeToKL (translateModToKr (Model w e d)) w) = Model w e d\end{verbatim}
-\item \begin{verbatim} translateModToKr ( fromJust (kripkeToKL (KrM uni val rel) w)) = KrM uni val rel \end{verbatim}
+\item \begin{verbatim}fromJust (kripkeToKL (translateModToKr (Model w e d)) w) 
+= Model w e d\end{verbatim}
+\item \begin{verbatim}translateModToKr ( fromJust (kripkeToKL (KrM uni val rel) w)) 
+= KrM uni val rel\end{verbatim}
 \end{enumerate}
 
 \subsubsection{Implementation}
@@ -270,7 +274,7 @@ Now we get to the implementation of our translation functions.
 \subsection{Translation functions from $\mathcal{KL}$ to Kripke}
 
 
-\underline{Translation functions for formulas:} \begin{verbatim} translateFormToKr \end{verbatim} replaces all of the atomic
+\underline{Translation functions for formulas:} \verb?translateFormToKr? replaces all of the atomic
 subformulas consisting of the predicate letter "P", followed by a standard name
 by propositional variables; it returns Nothing if the input formula doesn't satisfy
 this constraint.
@@ -283,7 +287,7 @@ translateFormToKr (K f)                          = Box <$> translateFormToKr f
 translateFormToKr _                              = Nothing
 \end{code}
 
-\underline{Translation functions for models:} \begin{verbatim} translateModToKr \end{verbatim} takes an epistemic model, and creates a Kripke model, where 
+\underline{Translation functions for models:} \verb?translateModToKr? takes an epistemic model, and creates a Kripke model, where 
 \begin{itemize}
 \item the worlds are all the world states in the epistemic state, plus the actual world state;
 \item for each world, the propositional variables true at it are the translations of the atomic formulas
@@ -312,7 +316,7 @@ isActuallyAtomic _ = False
 
 \subsection{Translation functions from Kripke to $\mathcal{KL}$}
 
-\underline{Translation functions for formulas:} \begin{verbatim} translateFormToKL \end{verbatim} takes a formula of SEL
+\underline{Translation functions for formulas:} \verb?translateFormToKL? takes a formula of SEL
 and computes the translated $\mathcal{KL}$ formula. Since SEL is a propositional logic, we will immitate this in the language of $\mathcal{KL}$
 by translating it to a unique corresponding atomic formula in $\mathcal{KL}$.
 
@@ -328,7 +332,7 @@ translateFormToKL (Dia form) = Not (K (Not (translateFormToKL form)))           
 
 \end{code}
 
-\underline{Translation functions for models:} \begin{verbatim} kripkeToKL \end{verbatim} takes a Kripke model and a world in its universe
+\underline{Translation functions for models:} \verb?kripkeToKL? takes a Kripke model and a world in its universe
 and computes a corresponding $\mathcal{KL}$ model which is satisfiability equivalent with the given world in the given model.
 
 KL models (Knowledge Logic models) and Kripke models are frameworks used to represent an agent's knowledge in epistemic logic, but they differ in their structure and approach. A KL model explicitly separates:
