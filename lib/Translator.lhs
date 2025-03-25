@@ -49,8 +49,8 @@ as “It is known that…”. Models are Kripke models. All this is known from H
 so we focus on the implementation, here.
 
 \subsubsection{Implementation}
-\underline{\textbf{Syntax}}
-\newline
+\subsubsection{Syntax}
+
 \begin{code}
 data ModForm = P Proposition
              | Neg ModForm
