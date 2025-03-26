@@ -51,16 +51,18 @@ as "It is known that...". Models are Kripke models. All this is known from HW2, 
 \begin{code}
 data ModForm = P Proposition
              | Neg ModForm
-             | Con ModForm ModForm
+             | Dis ModForm ModForm
              | Box ModForm
-             | Dia ModForm
              deriving (Eq,Ord,Show)
 
-disj :: ModForm -> ModForm -> ModForm
-disj f g = Neg (Con (Neg f) (Neg g))
+dia :: ModForm -> ModForm
+dia f = Neg (Box (Neg f))
+
+con :: ModForm -> ModForm -> ModForm
+con f g = Neg (Dis (Neg f) (Neg g))
 
 impl :: ModForm -> ModForm -> ModForm
-impl f = disj (Neg f)
+impl f = Dis (Neg f)
 
 -- this will be useful for testing later
 instance Arbitrary ModForm where
@@ -68,10 +70,9 @@ instance Arbitrary ModForm where
     randomForm :: Int -> Gen ModForm
     randomForm 0 = P <$> elements [1..5]
     randomForm n = oneof [ Neg <$> randomForm (n `div` 2)
-                         , Con <$> randomForm (n `div` 2)
+                         , Dis <$> randomForm (n `div` 2)
                                 <*> randomForm (n `div` 2)
-                         , Box <$> randomForm (n `div` 2)
-                         , Dia <$> randomForm (n `div` 2) ]
+                         , Box <$> randomForm (n `div` 2) ]
 \end{code}
 
 
@@ -106,8 +107,7 @@ data KripkeModel = KrM
 makesTrue :: (KripkeModel,World) -> ModForm -> Bool
 makesTrue (KrM _ v _, w) (P k)     = k `elem` v w
 makesTrue (m,w)          (Neg f)   = not (makesTrue (m,w) f)
-makesTrue (m,w)          (Con f g) = makesTrue (m,w) f && makesTrue (m,w) g
-makesTrue (KrM u v r, w) (Dia f)   = any (\w' -> makesTrue (KrM u v r, w') f) (r ! w)
+makesTrue (m,w)          (Dis f g) = makesTrue (m,w) f || makesTrue (m,w) g
 makesTrue (KrM u v r, w) (Box f)   = all (\w' -> makesTrue (KrM u v r,w') f) (r ! w)
 
 (!) :: Relation -> World -> [World]
@@ -277,7 +277,7 @@ subformulas consisting of the predicate letter "P", followed by a standard name 
 translateFormToKr :: Formula -> Maybe ModForm
 translateFormToKr (Atom (Pred "P" [StdNameTerm (StdName nx)])) = Just $ P (read (drop 1 nx))    
 translateFormToKr (Not f)                        =  Neg <$> translateFormToKr f           
-translateFormToKr (Or f g)                       = fmap disj (translateFormToKr f) <*> translateFormToKr g 
+translateFormToKr (Or f g)                       = fmap Dis (translateFormToKr f) <*> translateFormToKr g 
 translateFormToKr (K f)                          = Box <$> translateFormToKr f
 translateFormToKr _                              = Nothing
 \end{code}
@@ -321,9 +321,8 @@ by translating it to a unique corresponding atomic formula in $\mathcal{KL}$.
 translateFormToKL :: ModForm -> Formula
 translateFormToKL (P n) = Atom (Pred "P" [StdNameTerm (StdName ("n" ++ show n))])  -- Maps proposition P n to atom P(n), e.g., P 1 -> P(n1)
 translateFormToKL (Neg form) = Not (translateFormToKL form)                          -- Negation is preserved recursively
-translateFormToKL (Con form1 form2) = Not (Or (Not (translateFormToKL form1)) (Not (translateFormToKL form2)))  -- Conjunction as \neg (\neg f1 \lor \neg f2)
+translateFormToKL (Dis form1 form2) = Or (translateFormToKL form1) (translateFormToKL form2)
 translateFormToKL (Box form) = K (translateFormToKL form)                            -- Box becomes K, representing knowledge
-translateFormToKL (Dia form) = Not (K (Not (translateFormToKL form)))                -- Diamond as \neg K \neg, representing possibility
 
 \end{code}
 
@@ -438,9 +437,8 @@ uniqueProps f = nub (propsIn f)
   where
     propsIn (P k)       = [k]
     propsIn (Neg g)     = propsIn g
-    propsIn (Con g h)   = propsIn g ++ propsIn h
+    propsIn (Dis g h)   = propsIn g ++ propsIn h
     propsIn (Box g)     = propsIn g
-    propsIn (Dia g)     = propsIn g
 
 -- Generate all possible valuations explicitly
 allValuations :: [World] -> [Proposition] -> [Valuation]
@@ -461,12 +459,12 @@ isValidKr f (KrM univ _ rel) =
 
 -- Checks if a Kripke model is Euclidean
 isEuclidean :: KripkeModel -> Bool
-isEuclidean = isValidKr (disj (Box (Neg (P 1))) (Box (Dia (P 1))))
+isEuclidean = isValidKr (Dis (Box (Neg (P 1))) (Box (dia (P 1))))
   -- \Box \neg P1 \lor \Box \Diamond P1 holds for Euclidean relations
 
 -- Checks if a Kripke model is transitive
 isTransitive :: KripkeModel -> Bool
-isTransitive = isValidKr (disj (Neg (Box (P 1))) (Box (Box (P 1))))  -- \neg \Box P1 \lor \Box \Box P1 holds for transitive relations
+isTransitive = isValidKr (Dis (Neg (Box (P 1))) (Box (Box (P 1))))  -- \neg \Box P1 \lor \Box \Box P1 holds for transitive relations
 \end{code}
 
 
@@ -614,7 +612,7 @@ testNegation = let g = Neg (P 1)
 
 -- Test translation of conjunction
 testConjunction :: Bool
-testConjunction = let g = Con (P 1) (P 2)
+testConjunction = let g = con (P 1) (P 2)
                       klForm = translateFormToKL g
                       expected = Not (Or (Not (Atom (Pred "P" [StdNameTerm (StdName "n1")]))) 
                                         (Not (Atom (Pred "P" [StdNameTerm (StdName "n2")]))))
@@ -629,7 +627,7 @@ testBox = let g = Box (P 1)
 
 -- Test translation of diamond operator
 testDiamond :: Bool
-testDiamond = let g = Dia (P 1)
+testDiamond = let g = dia (P 1)
                   klForm = translateFormToKL g
                   expected = Not (K (Not (Atom (Pred "P" [StdNameTerm (StdName "n1")]))))
               in klForm == expected
@@ -645,7 +643,7 @@ testFormInvertSimple =
 -- Test invertibility of a complex formula using logical equivalence
 testFormInvertComplex :: Bool
 testFormInvertComplex = 
-  let g = Box (Con (P 1) (Neg (P 2)))   -- Original formula: □(P1 ∧ ¬P2)
+  let g = Box (con (P 1) (Neg (P 2)))   -- Original formula: □(P1 ∧ ¬P2)
       klForm = translateFormToKL g       -- Translate to KL
       selForm = fromJust (translateFormToKr klForm)  -- Back-translate to SEL
   in areEquivalent smallModels g selForm  -- Check equivalence
@@ -730,11 +728,11 @@ testTruthPresBoxP1Model3 = testTruthPres exampleModel3 (makeWorldState 30) (Box 
 
 -- Test truth preservation for diamond operator in S5 model
 testTruthPresDiaP1Model3 :: Bool
-testTruthPresDiaP1Model3 = testTruthPres exampleModel3 (makeWorldState 30) (Dia (P 1))
+testTruthPresDiaP1Model3 = testTruthPres exampleModel3 (makeWorldState 30) (dia (P 1))
 
 -- Test truth preservation for conjunction in clustered model
 testTruthPresConModel6 :: Bool
-testTruthPresConModel6 = testTruthPres exampleModel6 (makeWorldState 60) (Con (P 1) (P 2))
+testTruthPresConModel6 = testTruthPres exampleModel6 (makeWorldState 60) (con (P 1) (P 2))
 
 -- Test model invertibility for S5 model using bisimulation
 testModelInvertModel3 :: Bool
@@ -747,7 +745,7 @@ testModelInvertModel3 =
 
 -- Test contradiction is false in modelKL7
 testContradictionFalseModel7 :: Bool
-testContradictionFalseModel7 = not (checkModel modelKL7 (translateFormToKL (Con (P 2) (Neg (P 2)))))
+testContradictionFalseModel7 = not (checkModel modelKL7 (translateFormToKL (con (P 2) (Neg (P 2)))))
 
 
 -- Test reflexivity axiom false in modelKL7 (w70 not reflexive)
