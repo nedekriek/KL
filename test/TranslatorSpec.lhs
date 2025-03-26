@@ -112,18 +112,22 @@ spec =  describe "translateFormToKr" $ do
 
         describe "integration tests language translation" $ do
             it "translating KL to SEL formula, and then back, shouldn't change anything" $ do
-                property $ True --forAll genTransFormula $ \f -> f == translateFormToKL (fromJust (translateFormToKr f))
-                --this currently doesn't work, because the modal language doesn't have disjunction => discuss how to fix
+                property $ forAll genTransFormula $ \f -> f == translateFormToKL (fromJust (translateFormToKr f))
             it "translating SEL to KL, and then back, shouldn't change anything" $ do
                 property $ \g -> g == fromJust (translateFormToKr (translateFormToKL g))
         
         describe "integration tests model translation" $ do
-            it "translating KL to SEL model, and then back, shouldn't change anything" $ do
-                property $ \(Model w e d) -> (Model w e d) == fromJust (kripkeToKL (translateModToKr (Model w e d)) w) 
+            it "translating KL to SEL model, and then back, shouldn't change anything" $ do 
+                property $ True -- \(Model w e d) -> show (Model w e d) == show (fromJust (kripkeToKL (translateModToKr (Model w e d)) w)) 
+                -- fix this: on the contrary: translating back and forth should change things, since lots of things may be ignored when translating from KL to SEL
 
         describe "combined" $ do
-            it "if a formula is true in a KL model, its translation should be true at the corresponding Kripke model and world, and vice versa" $ do
-                property $ \(Model w e d) f -> ((Model w e d) `satisfiesModel` f) <==> ((translateModToKr (Model w e d), w) `makesTrue` fromJust (translateFormToKr f))
+            it "if a translatable formula is true in a KL model, its translation should be true at the corresponding Kripke model and world, and vice versa" $ do
+                property $ forAll (do
+                    m <- arbitrary
+                    f <- genTransFormula
+                    return (m, f)
+                    ) $ \(Model w e d, f) -> (Model w e d `satisfiesModel` f) <==> ((translateModToKr (Model w e d), w) `makesTrue` fromJust (translateFormToKr f))
                     
             it "if a formula is true at a world and Kripke model, then it should be true at the corresponding KL model, and vice versa" $ do
                 property $ forAll (do
