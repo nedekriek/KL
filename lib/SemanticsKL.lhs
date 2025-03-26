@@ -180,7 +180,7 @@ data Model = Model
   { actualWorld :: WorldState      -- The actual world state
   , epistemicState :: EpistemicState -- Set of possible world states
   , domain :: Set StdName          -- Domain of standard names
-  } deriving (Show)
+  } deriving (Show, Eq)
 
 instance Arbitrary Model where 
   arbitrary:: Gen Model 

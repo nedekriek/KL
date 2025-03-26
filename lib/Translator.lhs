@@ -5,14 +5,14 @@ module Translator where
 import Data.List
 import Data.Maybe
 import GHC.Num
+import Test.QuickCheck
+import qualified Data.Map as Map
+import Data.Set (Set)
+import qualified Data.Set as Set
 
 -- importing syntax and semantics of KL
 import SyntaxKL
 import SemanticsKL
-
-import qualified Data.Map as Map
-import Data.Set (Set)
-import qualified Data.Set as Set
 \end{code}
 
 \subsection{Preliminaries}
@@ -64,7 +64,20 @@ disj f g = Neg (Con (Neg f) (Neg g))
 
 impl :: ModForm -> ModForm -> ModForm
 impl f = disj (Neg f)
+
+-- this will be useful for testing later
+instance Arbitrary ModForm where
+  arbitrary = resize 16 (sized randomForm) where
+    randomForm :: Int -> Gen ModForm
+    randomForm 0 = P <$> elements [1..5]
+    randomForm n = oneof [ Neg <$> randomForm (n `div` 2)
+                         , Con <$> randomForm (n `div` 2)
+                                <*> randomForm (n `div` 2)
+                         , Box <$> randomForm (n `div` 2)
+                         , Dia <$> randomForm (n `div` 2) ]
 \end{code}
+
+
 
 This is taken from HW2, with one modification: we use "Neg" instead of "Not" as a type constructor 
 for negated modal formula, since "Not" is already being used as a type constructor for KL-formulas 
