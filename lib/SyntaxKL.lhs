@@ -3,13 +3,11 @@
 \subsection{Syntax of \texorpdfstring{$\mathcal{KL}$}{KL}}\label{subsec:KLsyntax}
 
 The syntax of the language $\mathcal{KL}$ is described in \textcite{Lokb} and inspired by Levesque's work (\cite{levesque1981}).
-The SyntaxKL module establishes the foundation for $\mathcal{KL}$'s syntax, defining the alphabet and grammar used in subsequent semantic evaluation.
+The \verb?SyntaxKL? module establishes the foundation for $\mathcal{KL}$'s syntax, defining the alphabet and grammar used in subsequent semantic evaluation.
 \begin{code}
 {-# LANGUAGE InstanceSigs #-}
 
-
 module SyntaxKL where
-
 import Test.QuickCheck
 
 \end{code}
@@ -19,7 +17,7 @@ The expressions of $\mathcal{KL}$ are constituted by sequences of symbols drawn 
 Firstly, the \textit{logical symbols}, which consist of the logical connectives and quantifiers $\exists, \vee, \neg$, as well as punctuation and parentheses.
 Furthermore, it compromises a countably infinite supply of first-order variables  denoted by the set $\{x, y, z, \ldots\}$, a countably infinite supply of standard names, represented by the set $\{\#1, \#2,\ldots\}$, and the equality symbol =. 
 The \textit{non-logical symbols} comprise predicate symbols of any arity $\{P, Q, R, \ldots\}$, which are intended to represent domain-specific properties and relations, and function symbols of any arity, which are used to denote mappings from individuals to individuals (\cite{Lokb}, p.22). \\
-n this implementation, standard names are represented as strings (e.g., "n1", "n2") via the StdName type, and variables are similarly encoded as strings (e.g., $"x"$, $"y"$) with the Variable type, ensuring that we have a distinct yet infinite supplies of each.
+In this implementation, standard names are represented as strings (e.g., "n1", "n2") via the \verb?StdName? type, and variables are similarly encoded as strings (e.g., "x", "y") with the \verb?Variable? type, ensuring that we have a distinct yet infinite supplies of each.
 
 \begin{code}
 arbitraryUpperLetter :: Gen String
@@ -42,9 +40,9 @@ instance Arbitrary Variable where
 \end{code}
 
 \textbf{Terms and Atoms}\\
-Terms in $\mathcal{KL}$ are the building blocks of expressions, consisting of variables, standard names, or function applications. 
+\verb?Term?s in $\mathcal{KL}$ are the building blocks of expressions, consisting of variables, standard names, or function applications. 
 Atomic propositions (atoms) are formed by applying predicate symbols to lists of terms. 
-To distinguish primitive terms (those that contain no variable and only a single function symbol) and primitive atoms (those atoms that contain no variables and only standard names as terms) for semantic evaluation, we also define PrimitiveTerm and PrimitiveAtom.
+To distinguish primitive terms (those that contain no variable and only a single function symbol) and primitive atoms (those atoms that contain no variables and only standard names as terms) for semantic evaluation, we also define \verb?PrimitiveTerm? and \verb?PrimitiveAtom?.
 
 \begin{code}
 -- Defines terms: variables, standard names, or function applications
@@ -87,7 +85,7 @@ data PrimitiveAtom = PPred String [StdName]
 
 \textbf{Formulas}\\
 $\mathcal{KL}$-formulas are constructed recursively from atoms, equality, and logical operators. 
-The Formula type includes atomic formulas, equality between terms, negation, disjunction, existential quantification, and the knowledge operator $K$. 
+The Formula type includes atomic formulas, equality between terms, negation, disjunction, existential quantification, and the knowledge operator $\mathbf{K}$. 
 Additional connectives like universal quantification ($\forall$), implication ($\rightarrow$), and biconditional ($\leftrightarrow$) are defined as derived forms for convenience.
 
 \begin{code}
