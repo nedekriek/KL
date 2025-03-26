@@ -3,9 +3,6 @@ cradle:
     - path: "./lib"
       component: "KL:lib"
 
-    - path: "./exec/Main.lhs"
-      component: "KL:exe:myprogram"
-
     - path: "./exec/Paths_KL.hs"
       component: "KL:exe:myprogram"
 

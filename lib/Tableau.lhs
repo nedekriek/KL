@@ -3,9 +3,9 @@
 Note: For the Beta-version, we omitted function symbol evaluation, limiting the satisfiability and validity checking to a propositional-like subset. 
 \\
 This subsection implements satisfiability and validity checkers for  $\mathcal{KL}$ using the tableau method, a systematic proof technique that constructs a tree to test formula satisfiability by decomposing logical components and exploring possible models.
-In $\mathcal{KL}$, this requires handling both first-order logic constructs (quantifiers, predicates) and the epistemic operator $K$, which requires tracking possible worlds.
+In $\mathcal{KL}$, this requires handling both first-order logic constructs (quantifiers, predicates) and the epistemic operator $\mathbf{K}$, which requires tracking possible worlds.
 Note that the full first-order epistemic logic with infinite domains is in general undecidable (\cite{Lokb} p. 173), so we adopt a semi-decision procedure: it terminates with "satisfiable" if an open branch is found but may loop infinitely for unsatisfiable cases due to the infinite domain $\mathcal{N}$.
-The Tableau module builds on SyntaxKL and SemanticsKL:
+The \verb?Tableau? module builds on \verb?SyntaxKL? and \verb?SemanticsKL?:
 \begin{code}
 module Tableau where
 
@@ -25,11 +25,11 @@ For $\mathcal{KL}$ we have to handle two things:
 \begin{itemize}
     \item Infinite domains: $\mathcal{KL}$ assumes a countably infinite set of standard names (\cite{Lokb}, p.23).
     The tableau method handles this via parameters (free variables) and $\delta$-rules (existential instantiation), introducing new names as needed.
-    This means that we Use a countably infinite supply of parameters (e.g., a1, a2,...) instead of enumerating all standard names.
-    \item Modal handling: The K-operator requires branching over possible worlds within an epistemic state.
+    This means that we use a countably infinite supply of parameters (e.g., a1, a2,...) instead of enumerating all standard names.
+    \item Modal handling: The $\mathbf{K}$-operator requires branching over possible worlds within an epistemic state.
 \end{itemize}
 
-First, we define new types for the tableau node and branch: Nodes pair formulas with world identifiers, and branches track nodes and used parameters.
+First, we define new types for the tableau node and branch: A \verb?Node? pairs formulas with world identifiers, and a \verb?Branch? tracks nodes and used parameters.
 \begin{code}
 -- A tableau node: formula labeled with a world
 data Node = Node Formula World deriving (Eq, Show)
@@ -42,7 +42,7 @@ data Branch = Branch { nodes :: [Node], params :: Set StdName } deriving (Show)
 
 \textbf{Tableau Rules}\\
 Rules decompose formulas, producing either a closed branch (contradictory) or open branches (consistent). 
-applyRule implements these rules, handling logical and epistemic operators.
+\verb?applyRule? implements these rules, handling logical and epistemic operators.
 The rules are applied iteratively to unexpanded nodes until all branches are either closed or fully expanded (open).
 \begin{code}
 -- Result of applying a tableau rule
@@ -82,16 +82,16 @@ expandKNot f w branch = Branch (Node (Not f) (w + 1) : nodes branch) (params bra
 \end{code}
 
 \textbf{Branch Closure}\\
-isClosed determines whether a tableau branch is contradictory (closed) or consistent (open). 
+The function \verb?isClosed? determines whether a tableau branch is contradictory (closed) or consistent (open). 
 A branch closes if it contains an explicit contradiction, meaning no model can satisfy all the formulas in that branch. 
 If a branch is not closed, it is potentially part of a satisfiable interpretation.
-The input is a Branch, which has nodes :: [Node] (each Node f w is a formula f in world w) and params :: Set StdName (used parameters).
-The function works as follows: first, we collect the atoms ((a, w, True) for positive atoms (Node (Atom a) w); (a, w, False) for negated Atoms (Node (Not (Atom a)) w)).
-For example, if nodes = [Node (Atom P(n1)) 0, Node (Not (Atom P(n1))) 0], then atoms = [(P(n1), 0, True), (P(n1), 0, False)].
-Next, we collect the equalities. After this, we check the atom contradictions. There we use $any$ to find pairs in $atoms$ and return True if a contradiction exists.
+The input is a \verb?Branch?, which has a list of nodes, \verb?nodes :: [Node]? (each \verb?Node f w? is a formula \verb?f? in world \verb?w?), and a list of used parameters, \verb?params :: Set StdName?.\\
+The function works as follows: first, we collect the atoms (\verb?(a, w, True)? for positive atoms \verb?(Node (Atom a) w)?; \verb?(a, w, False)? for negated atoms \verb?(Node (Not (Atom a)) w)?).
+For example, if \verb?nodes = [Node (Atom P(n1)) 0, Node (Not (Atom P(n1))) 0]?, then \verb?atoms = [(P(n1), 0, True), (P(n1), 0, False)]?.
+Next, we collect the equalities. After this, we check the atom contradictions. There we use \verb?any? to find pairs in \verb?atoms? and return \verb?True? if a contradiction exists.
 In a subsequent step, we check for equality contradictions. 
-The result of the function is atomContra || eqContra: this is True if either type of contradiction is found and False otherwise.
-This function reflects the semantic requirement that a world state w in an epistemic state e can not assign both True and False to the same ground atom or equality
+The result of the function is \verb?atomContra || eqContra?: this is \verb?True? if either type of contradiction is found and \verb?False? otherwise.
+This function reflects the semantic requirement that a world state $w$ in an epistemic state $e$ can not assign both \verb?True? and \verb?False? to the same ground atom or equality
 
 \begin{code}
 -- Branch closure with function symbols
@@ -108,10 +108,10 @@ isClosed b =
 \end{code}
 
 \textbf{Tableau Expasion}\\
-Next, we have the function expandTableau. 
-expandTableau iteratively applies tableau rules to expand all branches, determining if any remain open (indicating satisfiability). 
-It returns Just branches if at least one branch is fully expanded and open, and Nothing if all branches close.
-This function uses recursion. It continues until either all branches are closed or some are fully expanded
+Next, we have the function \verb?expandTableau?. 
+It iteratively applies tableau rules to expand all branches, determining if any remain open (indicating satisfiability). 
+It returns \verb?Just branches? if at least one branch is fully expanded and open, and \verb?Nothing? if all branches close.
+This function uses recursion. It continues until either all branches are closed or some are fully expanded.
 \begin{code}
 -- Expands the tableau, returning open branches if satisfiable
 expandTableau :: [Branch] -> Maybe [Branch]
@@ -129,14 +129,13 @@ expandTableau branches
 \end{code}
 
 \textbf{Top-Level Checkers}\\
-As top-level function we use isSatisfiable and isValid. 
-isSatisfiable tests whether a formula $f$ has a satisfying model. 
+As top-level functions we use \verb?isSatisfiable? and \verb?isValid?. 
+The function \verb?isSatisfiable? tests whether a formula $f$ has a satisfying model. 
 It starts the tableau process and interprets the result. 
-This function gets a Formula $f$ as an input and then creates a single branch with Node f 0 (formula f in world 0) and an empty set of parameters. Next, it calls expandTablaeu on this initial branch.
-It then interprets the result: if expandTableau returns Just $\mathunderscore$, this means, that at least one open branch exists, thus, the formula is satisfiable. 
-If expandTableau returns Nothing, this means that all branches are closed and the formula is unsatisfiable.
+This function gets a \verb?Formula f? as an input and then creates a single branch with \verb?Node f 0? (formula \verb?f? in world \verb?0?) and an empty set of parameters. Next, it calls \verb?expandTablaeu? on this initial branch.
+It then interprets the result: if \verb?expandTableau? returns \verb?Just? $\mathunderscore$, this means, that at least one open branch exists, thus, the formula is satisfiable. 
+If \verb?expandTableau? returns \verb?Nothing?, this means that all branches are closed and the formula is unsatisfiable.
 \begin{code}
-
 -- Tests if a formula is satisfiable
 isSatisfiable :: Formula -> Bool
 isSatisfiable f = case expandTableau [Branch [Node f 0] Set.empty] of 
@@ -144,9 +143,9 @@ isSatisfiable f = case expandTableau [Branch [Node f 0] Set.empty] of
   Nothing -> False
 
 \end{code}
-The three function isSatisfiable, expandTableau, and isClosed interact as follows: isSatisfiable starts the process with a single branch containing the formula.
-expandTableau recursively applies applyRule to decompose formulas, creating new branches as needed (e.g., for $\lor$, $\exists$).
-isClosed checks each branch for contradictions, guiding expandTableau to prune closed branches or halt with an open one.
+The three functions \verb?isSatisfiable?, \verb?expandTableau?, and \verb?isClosed? interact as follows: \verb?isSatisfiable? starts the process with a single branch containing the formula. 
+Then, \verb?expandTableau? recursively applies \verb?applyRule? to decompose formulas, creating new branches as needed (e.g., for $\lor$, $\exists$).
+In a next step, \verb?isClosed? checks each branch for contradictions, guiding \verb?expandTableau? to prune closed branches or halt with an open one.
 
 \begin{code}
 -- Tests if a formula is valid
