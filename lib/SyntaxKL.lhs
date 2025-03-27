@@ -6,10 +6,8 @@ The syntax of the language $\mathcal{KL}$ is described in \textcite{Lokb} and in
 The \verb?SyntaxKL? module establishes the foundation for $\mathcal{KL}$'s syntax, defining the alphabet and grammar used in subsequent semantic evaluation.
 \begin{code}
 {-# LANGUAGE InstanceSigs #-}
-
 module SyntaxKL where
 import Test.QuickCheck
-
 \end{code}
 
 \textbf{Symbols of $\mathcal{KL}$}\\
@@ -20,23 +18,28 @@ The \textit{non-logical symbols} comprise predicate symbols of any arity $\{P, Q
 In this implementation, standard names are represented as strings (e.g., "n1", "n2") via the \verb?StdName? type, and variables are similarly encoded as strings (e.g., "x", "y") with the \verb?Variable? type, ensuring that we have a distinct yet infinite supplies of each.
 
 \begin{code}
+\hide{
 arbitraryUpperLetter :: Gen String
 arbitraryUpperLetter = (:[]) <$> elements ['A'..'Z']
 
 arbitraryLowerLetter :: Gen String
 arbitraryLowerLetter = (:[]) <$> elements ['a'..'z']
-
+}
 -- Represents a standard name (e.g., "n1") from the infinite domain N
 newtype StdName = StdName String deriving (Eq, Ord, Show)
+\hide{
 instance Arbitrary StdName where
   arbitrary:: Gen StdName
   arbitrary = StdName . ("n" ++) . show <$> elements [1 .. 20::Int]
+}
 
 -- Represents a first-order variable (e.g., "x")
 newtype Variable = Var String deriving (Eq, Ord, Show)
+\hide{
 instance Arbitrary Variable where
   arbitrary:: Gen Variable
   arbitrary = Var . show <$> elements [1 .. 20::Int]
+}
 \end{code}
 
 \textbf{Terms and Atoms}\\
