@@ -3,7 +3,7 @@
 
 all: report.pdf build
 
-report.pdf: *.tex lib/*.lhs test/*.lhs exec/*.lhs references.bib report.bbl
+report.pdf: *.tex lib/*.lhs test/*.lhs references.bib report.bbl
 	latexmk -pdf -bibtex -synctex=1 -interaction=nonstopmode report
 
 report.bbl: first-compilation
