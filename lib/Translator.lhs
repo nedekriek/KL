@@ -9,6 +9,7 @@ import Test.QuickCheck
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Control.Monad (replicateM)
 
 -- importing syntax and semantics of KL
 import SyntaxKL
@@ -447,11 +448,9 @@ uniqueProps f = nub (propsIn f)
 allValuations :: [World] -> [Proposition] -> [Valuation]
 allValuations univ props = 
   let subsetsP = subsequences props
-  -- assignToWorlds = sequence (replicate (length univ) subsetsP)
-  in [ \w -> let idx = length (takeWhile (/= w) univ)
-             in if idx < length univ then assignToWorlds !! idx else []
-     | assignToWorlds <- replicate (length univ) subsetsP  ----DRAMA?????
- ]
+      allAssignments = replicateM (length univ) subsetsP
+  in [ \w -> Map.findWithDefault [] w (Map.fromList (zip univ assignment))
+     | assignment <- allAssignments ]
 
 -- Checks whether a Kripke formula is valid on a given Kripke model 
 isValidKr :: ModForm -> KripkeModel -> Bool
