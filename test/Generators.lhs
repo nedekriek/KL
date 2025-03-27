@@ -74,6 +74,21 @@ genTransFormula = sized genTrForm
                              , K <$> genTrForm (n `div` 2)
                              ]
 
+
+-- Generator for SEL-Formulae
+genModForm :: Gen ModForm
+genModForm = sized genFormula
+  where
+    genFormula :: Int -> Gen ModForm
+    genFormula 0 = P <$> choose (1, 5)  -- Base case: atomic proposition
+    genFormula n = frequency
+      [ (2, P <$> choose (1, 5))                  -- Atomic proposition 
+      , (1, Neg <$> genFormula (n `div` 2))       -- Negation
+      , (1, Dis <$> genFormula (n `div` 2)        -- Disjunction
+                <*> genFormula (n `div` 2))
+      , (1, Box <$> genFormula (n `div` 2))       -- Box operator
+      ]
+
 -- Generator for WorldStates at which only propositions of the form 'P(standardname)' are true
 genTransWorldState ::Gen WorldState
 genTransWorldState = do
@@ -104,6 +119,34 @@ genTransEucKripke = sized randomModel where
           return (x,y)
       let r = transEucClosure r'
       return (KrM u v r)
+
+-- Generator for arbitrary Kripke models
+genRandomKripkeModel :: Gen KripkeModel
+genRandomKripkeModel = sized randomModel where
+    randomModel :: Int -> Gen KripkeModel
+    randomModel n = do
+      msize <- choose (1, 1+n)
+      u <- nub . sort <$> vectorOf msize genTransWorldState
+      let v = trueAtomicPropsAt
+      r' <- if null u 
+        then return []
+        else listOf $ do 
+          x <- elements u
+          y <- elements u
+          return (x,y)
+      return (KrM u v r')
+
+genSmallRandomucKripke :: Gen KripkeModel
+genSmallRandomucKripke = resize 6 genRandomKripkeModel
+
+
+genIntKripkeModel :: Gen IntKripkeModel
+genIntKripkeModel = do
+  n <- choose (1, 6::Integer)  -- Small universe for simplicity
+  let univ = [0 .. n-1]
+  val <- vectorOf (fromInteger n) (sublistOf [1..4]) >>= \props -> return $ \w -> props !! fromInteger w
+  rel <- sublistOf [(w, w') | w <- univ, w' <- univ]
+  return $ IntKrM univ val rel
 
 transEucClosure :: Eq a => [(a,a)] -> [(a,a)]
 transEucClosure relation
