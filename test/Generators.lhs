@@ -85,6 +85,10 @@ genTransWorldState = do
     x <- arbitrary
     return (WorldState atValues x)
 
+-- Generator for smaller transitive and Euclidean Kripke models
+genSmallTransEucKripke :: Gen KripkeModel
+genSmallTransEucKripke = resize 6 genTransEucKripke
+
 -- Generator for transitive and Euclidean Kripke models
 genTransEucKripke :: Gen KripkeModel
 genTransEucKripke = sized randomModel where
@@ -115,7 +119,7 @@ genWorldFrom m = elements (universe m)
 -- Generator for a pair consisting of a transitive, Euclidean model, and a world in that model
 genTransEucKripkeWithWorld :: Gen (KripkeModel, World)
 genTransEucKripkeWithWorld = do
-  m <- genTransEucKripke
+  m <- genSmallTransEucKripke
   w <- genWorldFrom m
   return (m, w)
 

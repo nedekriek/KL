@@ -300,8 +300,11 @@ translateModToKr (Model w e _) = KrM (nub (w:Set.toList e)) val (nub rel) where
 --identifies true atomic formulas at a world that consist of the predicate "P" followed by a standard name
 trueAtomicPropsAt :: WorldState -> [Proposition]
 trueAtomicPropsAt w = 
-   map (\(Pred "P" [StdNameTerm (StdName nx)]) -> read (drop 1 nx)) trueActualAtoms where
+   map actualAtomToProp trueActualAtoms where
       trueActualAtoms = filter isActuallyAtomic $ map fst (filter snd (Map.toList (atomValues w)))
+      actualAtomToProp :: Atom -> Proposition 
+      actualAtomToProp (Pred "P" [StdNameTerm (StdName nx)]) = read (drop 1 nx)
+      actualAtomToProp _ = error "actualAtomToProp should only be given atoms of the form 'P(standardname)' as input"
 
 --checks whether an atomic formula consists of the predicate "P" followed by a standard name
 isActuallyAtomic :: Atom -> Bool
