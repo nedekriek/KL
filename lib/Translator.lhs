@@ -472,6 +472,118 @@ isTransitive = isValidKr (Dis (Neg (Box (P 1))) (Box (Box (P 1))))  -- \neg \Box
 
 \subsection{Tests}
 
+Here are some tests which, for now, you can run simply by typing the name of the test into ghci. 
+They should all return \verb?True?. They are not yet complete, and after beta, we will integrate testing 
+of the translation functions with testing of the rest of the modules.
+
+\begin{code}
+-- tests for translateFormToKr
+formula1, formula2, formula3 :: Formula
+formula1 = Atom (Pred "P" [StdNameTerm n1]) 
+formula2 = K (Atom (Pred "P" [StdNameTerm n1]))
+formula3 = Not (K (Atom (Pred "P" [StdNameTerm n1])))
+-- for these, the translation function should return, respectively:
+trFormula1, trFormula2, trFormula3 :: ModForm
+trFormula1 = P 1
+trFormula2 = Box (P 1)
+trFormula3 = Neg (Box (P 1))
+
+ftest1, ftest2, ftest3 :: Bool
+ftest1 = fromJust (translateFormToKr formula1) == trFormula1
+ftest2 = fromJust (translateFormToKr formula2) == trFormula2
+ftest3 = fromJust (translateFormToKr formula3) == trFormula3
+
+--for the next ones, translateFormToKr should return Nothing
+form4, form5 :: Formula
+form4 = Atom (Pred "Teach" [StdNameTerm n1, StdNameTerm n2]) 
+form5 = Not (K (Atom (Pred "Q" [StdNameTerm n1])))
+
+ftest4, ftest5 :: Bool
+ftest4 = isNothing $ translateFormToKr form4 
+ftest5 = isNothing $ translateFormToKr form5
+
+-- tests for translateModToKr
+-- standard name abbreviations:
+n1, n2, n3, n4 :: StdName
+n1 = StdName "n1" -- ted
+n2 = StdName "n2" -- sue
+n3 = StdName "n3" -- tina
+n4 = StdName "n4" -- tara
+
+-- a model where the actual world is part of the epistemic state
+w1, w2, w3, w4 :: WorldState
+w1 = mkWorldState [ (PPred "P" [n1], True) ] []
+w2 = mkWorldState [ (PPred "P" [n2], True)
+                  , (PPred "P" [n3], True) ] []
+w3 = mkWorldState [ (PPred "P" [n4], True) ] []
+w4 = mkWorldState [] []
+
+e1 :: EpistemicState
+e1 = Set.fromList [w1, w2, w3, w4]
+
+domain1 :: Set StdName
+domain1 = Set.fromList [n1, n2, n3, n4]
+
+model1 :: Model
+model1 = Model w1 e1 domain1
+
+-- if all goes well, this should be converted to the following KripkeModel
+kripkeM1 :: KripkeModel
+kripkeM1 = KrM uni val rel where
+   uni = [w1, w2, w3, w4]
+   val world | world == w1 = [1]
+             | world == w2 = [2, 3]
+             | world == w3 = [4]
+             | otherwise   = []
+   rel = [(v, v') | v <- uni, v' <- uni]
+
+test1 :: Bool
+test1 = translateModToKr model1 == kripkeM1 
+
+-- a model where the actual world is NOT part of the epistemic state
+e2 :: EpistemicState
+e2 = Set.fromList [w2, w3, w4]
+
+model2 :: Model
+model2 = Model w1 e2 domain1
+
+-- if all goes well, this should be converted to the following KripkeModel
+kripkeM2 :: KripkeModel
+kripkeM2 = KrM uni val rel where
+   uni = [w1, w2, w3, w4]
+   val world | world == w1 = [1]
+             | world == w2 = [2, 3]
+             | world == w3 = [4]
+             | otherwise   = []
+   rel = [(v, v') | v <- es, v' <- es] ++ [(w1, v) | v <- es] where
+      es = [w2, w3, w4]
+
+test2 :: Bool
+test2 = translateModToKr model2 == kripkeM2
+
+-- a model that contains non-atomic formulas
+w2' :: WorldState
+w2' = mkWorldState [ (PPred "P" [n2], True)
+                  , (PPred "P" [n3], True) 
+                  , (PPred "R" [n4, n1], True)] []
+
+e1' :: EpistemicState
+e1' = Set.fromList [w1, w2', w3, w4]
+
+-- model1' is like model1, except for extra formulas true in w2' that aren't
+-- true in w2
+model1' :: Model
+model1' = Model w1 e1' domain1
+
+-- if all goes well, this should be converted to a model that "looks the same as"
+-- the one model1 gets converted to
+test3 :: Bool
+test3 = translateKrToKrInt (translateModToKr model1) == translateKrToKrInt (translateModToKr model1')
+
+-- Add tests for seeing whether the translations interact with their
+-- “inverses” in the right way
+\end{code}
+
 \subsection{Tests for Translation from Kripke to KL}
 
 \subsection{Tests for formulae}
