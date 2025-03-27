@@ -21,13 +21,6 @@ dependencies:
 library:
   source-dirs: lib
 
-executables:
-  myprogram:
-    main: Main.lhs
-    source-dirs: exec
-    dependencies:
-      - KL
-
 tests:
   all-tests:
     source-dirs: test
