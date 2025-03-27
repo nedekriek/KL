@@ -20,6 +20,8 @@ dependencies:
 
 library:
   source-dirs: lib
+  dependecies:
+    - test
 
 executables:
   myprogram:

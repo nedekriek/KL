@@ -11,24 +11,24 @@ import Data.List (nub)
 import qualified Data.Set as Set
 
 import Test.QuickCheck
-import Control.Exception (evaluate)
+--import Control.Exception (evaluate)
 
 -- Arbitrary instances for QuickCheck
 instance Arbitrary Node where
     arbitrary = do
         f <- genGroundFormula
-        w <- choose (0, 5) :: Gen Int -- Limit world IDs to a small range
+        w <- choose (0, 5) :: Gen Int
         return $ Node f w
 
 instance Arbitrary Branch where
     arbitrary = do
-        ns <- listOf arbitrary :: Gen [Node]
+        ns <- resize 5 (listOf arbitrary) :: Gen [Node] -- Limit to 0-5 nodes
         ps <- genStdNameSet
         return $ Branch ns ps
 
 instance Arbitrary RuleResult where
     arbitrary = oneof [ return Closed
-                      , Open <$> listOf arbitrary ]
+                      , Open <$> resize 5 (listOf arbitrary) ] -- Limit to 0-5 branches
 
 spec :: Spec
 spec = do

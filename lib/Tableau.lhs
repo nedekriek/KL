@@ -13,6 +13,7 @@ import SyntaxKL
 import SemanticsKL
 import Data.Set (Set)
 import qualified Data.Set as Set
+
 \end{code}
 
 \textbf{Tableau Approach}\\
@@ -37,7 +38,7 @@ data Node = Node Formula World deriving (Eq, Show)
 type World = Int    -- World identifier (0, 1, ...)
 
 -- A tableau branch: list of nodes and set of used parameters
-data Branch = Branch { nodes :: [Node], params :: Set StdName } deriving (Show)
+data Branch = Branch { nodes :: [Node], params :: Set StdName } deriving (Eq, Show)
 \end{code}
 
 \textbf{Tableau Rules}\\
@@ -46,7 +47,7 @@ applyRule implements these rules, handling logical and epistemic operators.
 The rules are applied iteratively to unexpanded nodes until all branches are either closed or fully expanded (open).
 \begin{code}
 -- Result of applying a tableau rule
-data RuleResult = Closed | Open [Branch] deriving (Show)
+data RuleResult = Closed | Open [Branch] deriving (Eq, Show)
 
 -- Generates fresh parameters not in the used set
 newParams :: Set StdName -> [StdName]
@@ -57,10 +58,10 @@ applyRule :: Node -> Branch -> RuleResult
 applyRule (Node f w) branch = case f of
   Atom _ -> Open [branch]   -- If formula is an atom: Do nothing; keep the formula in the branch.
   Not (Atom _) -> Open [branch]  -- Negated atoms remain, checked by isClosed
-  Equal _ _ -> Open [branch]  -- Keep equality as is; closure checks congruence
-  Not (Equal _ _) -> Open [branch]  -- Keep negated equality 
+  Equal t1 t2 -> if t1 == t2 then Open [branch] else Closed -- Reflexive equality
+  Not (Equal t1 t2) -> if t1 == t2 then Closed else Open [branch] -- Contradiction for t /= t
   Not (Not f') -> Open [Branch (Node f' w : nodes branch) (params branch)] -- Case: double negation, e.g., replace $\neg \neg \varphi$ with $\varphi$
-  Not (Or f1 f2) -> Open [Branch (Node (Not f1) w : Node (Not f2) w : nodes branch) (params branch)] -- Case: negated disjunction
+  Not (Or f1 f2) -> Open [Branch (Node (Not f1) w : Node (Not f2) w : nodes branch) (params branch)] -- De Morgan: ~(f1 v f2) -> ~f1 & ~f2
   Not (Exists x f') -> Open [Branch (Node (klforall x (Not f')) w : nodes branch) (params branch)] -- Case:: negated existential
   Not (K f') -> Open [expandKNot f' w branch] -- Case: negated knowledge
   Or f1 f2 -> Open [ Branch (Node f1 w : nodes branch) (params branch)
@@ -107,25 +108,30 @@ isClosed b =
   in atomContra || eqContra  -- True if any contradiction exists
 \end{code}
 
-\textbf{Tableau Expasion}\\
+\textbf{Tableau Expansion}\\
 Next, we have the function expandTableau. 
 expandTableau iteratively applies tableau rules to expand all branches, determining if any remain open (indicating satisfiability). 
 It returns Just branches if at least one branch is fully expanded and open, and Nothing if all branches close.
 This function uses recursion. It continues until either all branches are closed or some are fully expanded
 \begin{code}
--- Expands the tableau, returning open branches if satisfiable
 expandTableau :: [Branch] -> Maybe [Branch]
 expandTableau branches
-  | all isClosed branches = Nothing --If every branch is contradictory, return Nothing
-  | any (null . nodes) branches = Just branches --If any branch has no nodes left to expand (and isn't closed), it's open and complete
-  | otherwise = do
-      let (toExpand, rest) = splitAt 1 branches --Take the first branch (toExpand) and leave the rest.
-          branch = head toExpand --Focus on this branch.
-          node = head (nodes branch) --Pick the first unexpanded node.
-          remaining = Branch (tail (nodes branch)) (params branch) --he branch minus the node being expanded.
-      case applyRule node remaining of
-        Closed -> expandTableau rest --Skip this branch, recurse on rest.
-        Open newBranches -> expandTableau (newBranches ++ rest) --Add the new branches (e.g., from \lor or \exists) to rest, recurse.
+  | null branches = Nothing
+  | all isClosed branches = Nothing
+  | otherwise =
+      let openBranches = filter (not . isClosed) branches
+          expandable = filter (not . null . nodes) openBranches
+      in if null expandable
+         then Just openBranches
+         else let (branch:rest) = expandable
+                  ruleResult = applyRule (head (nodes branch)) (Branch (tail (nodes branch)) (params branch))
+              in case ruleResult of
+                   Closed -> expandTableau rest
+                   Open newBranches -> case expandTableau rest of
+                       Nothing -> expandTableau newBranches
+                       Just restBranches -> case expandTableau newBranches of
+                           Nothing -> Just restBranches
+                           Just newBs -> Just (newBs ++ restBranches)
 \end{code}
 
 \textbf{Top-Level Checkers}\\
@@ -153,4 +159,7 @@ isClosed checks each branch for contradictions, guiding expandTableau to prune c
 isValid :: Formula -> Bool
 isValid f = not (isSatisfiable (Not f))
 \end{code}
+
+
+
 
