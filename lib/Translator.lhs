@@ -17,34 +17,17 @@ import SemanticsKL
 \end{code}
 
 \subsection{Preliminaries}
-We want to compare $\mathcal{KL}$ and Standard Epistemic Logic based on Kripke frames.
-(Call this SEL).
-For example, we might want to compare the complexity of model checking
-for $\mathcal{KL}$ and SEL. 
-To do this, we need some way of "translating" between formulas of $\mathcal{KL}$ and
-formulas of SEL, and between $\mathcal{KL}$-models and Kripke frames. This would allow us to,
-e.g., (1) take a set of $\mathcal{KL}$-formulas of various lengths and a set of $\mathcal{KL}$-models
-of various sizes; (2) translate both formulas and models into SEL; (3) do model
-checking for both (i.e.. on the $\mathcal{KL}$ side, and on the SEL side); (4) compare how 
-time and memory scale with length of formula.\\
-\noindent Three things to note:
+We want to compare $\mathcal{KL}$ and Standard Epistemic Logic based on Kripke frames. (Call this SEL). For example, we might want to compare the complexity of model checking for $\mathcal{KL}$ and SEL. To do this, we need some way of "translating" between formulas of $\mathcal{KL}$ and formulas of SEL, and between $\mathcal{KL}$-models and Kripke frames. This would allow us to, e.g., (1) take a set of $\mathcal{KL}$-formulas of various lengths and a set of $\mathcal{KL}$-models of various sizes; (2) translate both formulas and models into SEL; (3) do model checking for both (i.e.. on the $\mathcal{KL}$ side, and on the SEL side); (4) compare how time and memory scale with length of formula.\\
+\noindent Three things need to be borne in mind when designing the translation functions:
 \begin{enumerate}
-    \item The language of $\mathcal{KL}$ is predicate logic, plus a knowledge operator $\mathbf{K}$.
-    The language of SEL, on the other hand, is propositional logic, plus
-    a knowledge operator. So we can only translate from a fragment of 
-    the language of $\mathcal{KL}$ to SEL.
-    \item Kripke models are much more general than $\mathcal{KL}$-models. So we can only
-    translate from a fragment of the set of Kripke models into $\mathcal{KL}$-models.
-    \item In Kripke models, there is such a thing as evaluating a formula 
-    at a specific world, whereas this has no equivalent in $\mathcal{KL}$-models. We need
-    to take this fact into account when thinking about adequacy criteria for
-    a translation function.
+    \item The language of $\mathcal{KL}$ is predicate logic, plus a knowledge operator $\mathbf{K}$. The language of SEL, on the other hand, is propositional logic, plus a knowledge operator. So we can only translate from a fragment of the language of $\mathcal{KL}$ to SEL.
+    \item Kripke models are much more general than $\mathcal{KL}$-models. So we can only translate from a fragment of the set of Kripke models into $\mathcal{KL}$-models.
+    \item In Kripke models, there is such a thing as evaluating a formula at various different worlds, whereas this has no equivalent in $\mathcal{KL}$-models. We need to take this fact into account when thinking about adequacy criteria for a translation function.
 \end{enumerate}
 
 \subsection{Syntax and Semantics of SEL}
 
-The syntax and semantics of SEL is well-known: the language is just the language of basic modal logic, where the Box operator $\Box$ is interpreted
-as "It is known that...". Models are Kripke models. All this is known from HW2, so we focus on the implementation, here.\\
+The syntax and semantics of SEL is well-known: the language is just the language of basic modal logic, where the Box operator $\Box$ is interpreted as "It is known that...". Models are Kripke models. A mathematical description of all this can be found in any standard textbook on modal logic, so we focus on the implementation, here.\\
 \\
 \noindent \textbf{Implementation}\\
 \textbf{Syntax}\\
@@ -76,18 +59,9 @@ instance Arbitrary ModForm where
                          , Box <$> randomForm (n `div` 2) ]
 \end{code}
 
-
-
-This is taken from HW2, with one modification: we use "Neg" instead of "Not" as a type constructor 
-for negated modal formula, since "Not" is already being used as a type constructor for $\mathcal{KL}$-formulas 
-(see \verb?SyntaxKL? for details).
-
 \underline{\textbf{Semantics}}
 
-To represent Kripke Models, we will use the types from HW 2, with a twist: we let
-the worlds be \verb?WorldStates?, as defined in \verb?Semantics?. This simplifies the translation
-functions, and doesn't matter mathematically, as the internal constitution
-of the worlds in a Kripke Model is mathematically irrelevant.
+In our implementation of Kripke Models, we let the worlds be \verb?WorldStates?, as defined in \verb?SemanticsKL?. This simplifies the translation functions, and otherwise doesn't matter, as the internal constitution of the worlds in a Kripke Model is irrelevant for the truth and validity of formulas in the model.
 
 \begin{code}
 --definition of models
@@ -119,8 +93,7 @@ trueEverywhere :: KripkeModel -> ModForm -> Bool
 trueEverywhere (KrM x y z) f = all (\w -> makesTrue (KrM x y z, w) f) x
 \end{code}
 
-Sometimes, it will still be useful to represent Kripke Models in the old way,
-using Integers as worlds. We therefore define an additional type \verb?IntKripkeModel?:
+Sometimes, it will still be useful to represent Kripke Models by using Integers as worlds. We therefore define an additional type \verb?IntKripkeModel?:
 
 \begin{code}
 type IntWorld = Integer
@@ -130,8 +103,7 @@ type IntRelation = [(IntWorld, IntWorld)]
 data IntKripkeModel = IntKrM IntUniverse IntValuation IntRelation
 \end{code}
 
-Sometimes it will also be usefuel to convert between \verb?KripkeModel? and \verb?IntKripkeModel. 
-To enable this, we provide the following functions:
+Sometimes it will also be usefuel to convert between \verb?KripkeModel? and \verb?IntKripkeModel. To enable this, we provide the following functions:
 
 \begin{code}
 --KripkeModel to IntKripkeModel
@@ -178,11 +150,7 @@ instance Show KripkeModel where
 \end{code}
 Note that we are breaking with the convention that the \verb?show? function should return what you need to type into ghci to define the object; however, we feel justified in doing this because of the greater user friendliness it provides.\\
 
-Later, we will want to compare models for equality; so we'll also define an \verv?Eq? instance.
-Comparison for equality will work, at least as long as models are finite. 
-The way this comparison works is by checking that 
-the valuations agree on all worlds in the model. 
-By sorting before checking for equality, we ensure that the order in which worlds appear in the list of worlds representing the universe, the order in which true propositions at a world appear, and the order in which pairs appear in the relation doesn't affect the comparison.
+Later, we will want to compare models for equality; so we'll also define an \verv?Eq? instance. Comparison for equality will work, at least as long as models are finite. The way this comparison works is by checking that the valuations agree on all worlds in the model. By sorting before checking for equality, we ensure that the order in which worlds appear in the list of worlds representing the universe, the order in which true propositions at a world appear, and the order in which pairs appear in the relation doesn't affect the comparison.
 \begin{code}
 instance Eq KripkeModel where
    (KrM u v r) == (KrM u' v' r') = 
@@ -194,33 +162,12 @@ instance Eq IntKripkeModel where
 \end{code}
 \emph{NB:} the following is possible: Two \verb?KripkeModel?s are equal, we convert both to \verb?IntKripkeModel?s and the resulting \verb?IntKripkeModel?s are not equal. \\
 
-Why is this possible? Because when checking for equality on \verb?KripkeModel?s, we ignore the order of worlds in the list that defines the universe; but for the conversion to \verb?IntKripkeModel?, the order matters!\\
-
-Similarly, we may get \verb?translateModToKr model1 == kripkeM1?, but when we print the lhs and rhs of the equation, we get different results. 
-This is perfectly fine, and not unexpected, since the printing of a \verb?KripkeModel? works via converting it to a \verb?IntKripkeModel?, and then printing it.
+Why is this possible? Because when checking for equality on \verb?KripkeModel?s, we ignore the order of worlds in the list that defines the universe; but for the conversion to \verb?IntKripkeModel?, the order matters! Similarly, we may get \verb?translateModToKr model1 == kripkeM1?, but when we print the lhs and rhs of the equation, we get different results. This is perfectly fine, and not unexpected, since the printing of a \verb?KripkeModel? works via converting it to a \verb?IntKripkeModel?, and then printing it.
 
 \subsection{Translation functions: KL to Kripke}
 \textbf{Desiderata}\\
-First, what are the types of our translation functions? As mentioned at the beginning,
-we need to bear several things in mind when deciding this question:
-\begin{enumerate}
-    \item The language of $\mathcal{KL}$ is predicate logic, plus a knowledge operator $\mathbf{K}$.
-    The language of SEL, on the other hand, is propositional logic, plus
-    a knowledge operator. So we can only translate from a fragment of 
-    the language of $\mathcal{KL}$ to SEL.
-    \item Kripke models are much more general than $\mathcal{KL}$-models. So we can only
-    translate from a fragment of the set of Kripke models into $\mathcal{KL}$-models.
-    \item In Kripke models, there is such a thing as evaluating a formula 
-    at a specific world, whereas this has no equivalent in $\mathcal{KL}$-models. In fact, 
-    evaluating a formula in a $\mathcal{KL}$-model is much more closely related to 
-    evaluating a formula at a world in a Kripke model, than to evaluating it
-    with respect to a whole Kripke model.
-\end{enumerate}
-
-In our implementation, to do justice to the the fact that translation functionscan only sensibly be defined for \emph{some} Kripke models, and \emph{some} $\mathcal{KL}$ formulas, we use the \verb?Maybe? monad provided by Haskell.\\
-To do justice to the fact that evaluating in a $\mathcal{KL}$-model is more like evaluating a 
-formula at a specific world in a Kripke Model, than like evaluating a formula with
-respect to a whole Kripke model, we translate from pairs of Kripke models and worlds 
+In our implementation, to do justice to the the fact that translation functions can only sensibly be defined for \emph{some} Kripke models, and \emph{some} $\mathcal{KL}$ formulas, we use the \verb?Maybe? monad provided by Haskell.\\
+To do justice to the fact that evaluating in a $\mathcal{KL}$-model is more like evaluating a formula at a specific world in a Kripke Model, than like evaluating a formula with respect to a whole Kripke model, we translate from pairs of Kripke models and worlds 
 to $\mathcal{KL}$-models, rather than just from Kripke models to $\mathcal{KL}$-models. \\
 Thus, these are the types of our translation functions:
 \begin{enumerate}
@@ -241,31 +188,27 @@ kripkeToKL :: KripkeModel -> WorldState -> Maybe Model
 \end{verbatim}
 \end{enumerate}
 
-What constraints do we want our translation functions to satisfy? We propose that reasonable
-translation functions should at least satisfy these constraints: for any KL model 
-\verb?Model w e d?, any translatable KL formula \verb?f?,
-any translatable Kripke model \verb?KrM uni val rel?, and any SEL formula
-\verb?g?,
+What constraints do we want our translation functions to satisfy? We propose that reasonable translation functions should at least satisfy these constraints: for any KL model \verb?Model w e d?, any translatable KL formula \verb?f?, any translatable Kripke model \verb?KrM uni val rel?, and any SEL formula \verb?g?,
 \begin{enumerate}
-%truth values should be preserved
-\item \verb?Model w e d |= f? iff
-\newline
-\verb?(translateModToKr (Model w e d)) w |= fromJust (translateFormToKr f )?
+\item Truth values should be preserved by the translations:
+  \begin{itemize}
+  \item \verb?Model w e d |= f? iff
+  \newline
+  \verb?(translateModToKr (Model w e d)) w |= fromJust (translateFormToKr f)?
 
-\item \verb?(KrM uni val rel) w |= g? iff 
-\newline
-\verb?fromJust (kripkeToKL (KrM uni val rel) w) |= translateFormToKL g?
+  \item \verb?(KrM uni val rel) w |= g? iff 
+  \newline
+  \verb?fromJust (kripkeToKL (KrM uni val rel) w) |= translateFormToKL g?
+  \end{itemize}
 
-%Translating formulas back and forth shouldn't change anything:
-\item \verb?fromJust (translateFormToKL (translateFormToKr f )) = f?
-\item \verb?translateFormToKr (fromJust (translateFormToKL g )) = g?
-
-%Translating models back and forth shouldn't change anything:
-\item \begin{verbatim}fromJust (kripkeToKL (translateModToKr (Model w e d)) w) 
-= Model w e d\end{verbatim}
-\item \begin{verbatim}translateModToKr ( fromJust (kripkeToKL (KrM uni val rel) w)) 
-= KrM uni val rel\end{verbatim}
+\item Translating formulas back and forth shouldn't change them:
+  \begin{itemize}
+  \item \verb?translateFormToKL (fromJust (translateFormToKr f)) = f?
+  \item \verb?fromJust (translateFormToKr (translateFormToKL g)) = g?
+  \end{itemize}
 \end{enumerate}
+
+We check that our translation formulas do indeed satisfy these constraint in the test suite (in \verb?TranslatorSpec.lhs?).
 
 \textbf{Implementation}\\
 Now we get to the implementation of our translation functions.
