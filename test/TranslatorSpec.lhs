@@ -115,11 +115,6 @@ spec =  describe "translateFormToKr" $ do
                 property $ forAll genTransFormula $ \f -> f == translateFormToKL (fromJust (translateFormToKr f))
             it "translating SEL to KL, and then back, shouldn't change anything" $ do
                 property $ \g -> g == fromJust (translateFormToKr (translateFormToKL g))
-        
-        describe "integration tests model translation" $ do
-            it "translating KL to SEL model, and then back, shouldn't change anything" $ do 
-                property $ True -- \(Model w e d) -> show (Model w e d) == show (fromJust (kripkeToKL (translateModToKr (Model w e d)) w)) 
-                -- fix this: on the contrary: translating back and forth should change things, since lots of things may be ignored when translating from KL to SEL
 
         describe "combined" $ do
             it "if a translatable formula is true in a KL model, its translation should be true at the corresponding Kripke model and world, and vice versa" $ do
@@ -131,10 +126,10 @@ spec =  describe "translateFormToKr" $ do
                     
             it "if a formula is true at a world and Kripke model, then it should be true at the corresponding KL model, and vice versa" $ do
                 property $ forAll (do
-                    (m, w) <- genTransEucKripkeWithWorld `suchThat` (\(m, w) -> w `elem` (universe m))
+                    (m, w) <- genTransEucKripkeWithWorld `suchThat` (\(m, w) -> w `elem` universe m)
                     g <- arbitrary 
                     return (m, w, g)
-                    ) $ \(m, w, g) ->  ((m, w) `makesTrue` g <==> (fromJust (kripkeToKL m w) `satisfiesModel` (translateFormToKL g)))
+                    ) $ \(m, w, g) ->  (m, w) `makesTrue` g <==> (fromJust (kripkeToKL m w) `satisfiesModel` translateFormToKL g)
 
 (<==>) :: Bool -> Bool -> Bool
 (<==>) p q = (p && q) || (not p && not q)

@@ -82,8 +82,7 @@ genTransWorldState = do
     tvs <- vectorOf m arbitrary
     let atValues' = zip atoms tvs
     let atValues = Map.fromList $ checkDups atValues'
-    x <- arbitrary
-    return (WorldState atValues x)
+    WorldState atValues <$> arbitrary
 
 -- Generator for smaller transitive and Euclidean Kripke models
 genSmallTransEucKripke :: Gen KripkeModel
