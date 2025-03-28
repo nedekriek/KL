@@ -19,7 +19,11 @@ import Generators
 
 spec :: Spec
 spec =  describe "translateFormToKr" $ do
-        let formula1 = Atom (Pred "P" [StdNameTerm n1])
+        let n1 = StdName "n1" 
+            n2 = StdName "n2" 
+            n3 = StdName "n3" 
+            n4 = StdName "n4" 
+            formula1 = Atom (Pred "P" [StdNameTerm n1])
             formula2 = K (Atom (Pred "P" [StdNameTerm n1]))
             formula3 = Not (K (Atom (Pred "P" [StdNameTerm n1])))
             trFormula1 = P 1
@@ -63,7 +67,7 @@ spec =  describe "translateFormToKr" $ do
                 model1 = Model w1 e1 domain1
 
                 -- if all goes well, this should be converted to the following KripkeModel
-                kripkeM1 :: KripkeModel
+                kripkeM1 :: KripkeModel WorldState
                 kripkeM1 = KrM uni val rel where
                     uni = [w1, w2, w3, w4]
                     val world   | world == w1 = [1]
@@ -80,7 +84,7 @@ spec =  describe "translateFormToKr" $ do
                 model2 = Model w1 e2 domain1
 
                 -- if all goes well, this should be converted to the following KripkeModel
-                kripkeM2 :: KripkeModel
+                kripkeM2 :: KripkeModel WorldState
                 kripkeM2 = KrM uni val rel where
                     uni = [w1, w2, w3, w4]
                     val world   | world == w1 = [1]
@@ -137,6 +141,13 @@ spec =  describe "translateFormToKr" $ do
                 ww2 = mkWorldState [(PPred "P" [StdName "n1"], True), (PPred "P" [StdName "n2"], True)] []
                 modelAllP1 = KrM [ww1, ww2] trueAtomicPropsAt [(ww1, ww1), (ww1, ww2), (ww2, ww1), (ww2, ww2)]
                 modelSomeP1 = KrM [ww1, mkWorldState [] []] trueAtomicPropsAt [(ww1, ww1)]
+
+                w1, w2, w3, w4 :: WorldState
+                w1 = mkWorldState [ (PPred "P" [n1], True) ] []
+                w2 = mkWorldState [ (PPred "P" [n2], True)
+                    , (PPred "P" [n3], True) ] []
+                w3 = mkWorldState [ (PPred "P" [n4], True) ] []
+                w4 = mkWorldState [] []
 
             it "returns true when P 1 is true in every world" $ do
                 trueEverywhere modelAllP1 (P 1) `shouldBe` True
@@ -202,7 +213,7 @@ spec =  describe "translateFormToKr" $ do
                     return $ isNothing result <==> condition
 
         describe "convertToWorldStateModel" $ do
-            let intModel = IntKrM [0, 1] (\w -> if w == 0 then [1] else [2]) [(0, 1)]
+            let intModel = KrM [0, 1] (\w -> if w == 0 then [1] else [2]) [(0, 1)]
                 expectedKr = KrM [makeWorldState 0, makeWorldState 1] 
                     (\w -> if w == makeWorldState 0 then [1] else [2]) 
                     [(makeWorldState 0, makeWorldState 1)]
@@ -217,7 +228,7 @@ spec =  describe "translateFormToKr" $ do
                 property $ do
                 intKr <- genIntKripkeModel
                 let kr = convertToWorldStateModel intKr
-                    IntKrM intUniv intVal intRel = intKr
+                    KrM intUniv intVal intRel = intKr
                     worldStates = map makeWorldState intUniv
                 return $ length (universe kr) == length intUniv &&
                     relation kr == [(makeWorldState i, makeWorldState j) | (i, j) <- intRel] &&
@@ -232,14 +243,14 @@ spec =  describe "translateFormToKr" $ do
                     return $ ws1 /= ws2
 
         describe "Show IntKripkeModel" $ do
-            let intModel = IntKrM [0, 1] (\w -> if w == 0 then [1] else [2]) [(0, 1)]
+            let intModel = KrM [0, 1] (\w -> if w == 0 then [1] else [2]) [(0, 1)]
             it "shows IntKripkeModel in expected format" $ do
-                show intModel `shouldBe` "IntKrM\n[0,1]\n[(0,[1]),(1,[2])]\n[(0,1)]"
+                show intModel `shouldBe` "KrM\n[0,1]\n[(0,[1]),(1,[2])]\n[(0,1)]"
 
             it "consistently formats universe, valuation, and relation (property)" $
                 property $ do
-                    intKr@(IntKrM univ val rel) <- genIntKripkeModel
-                    let expected = "IntKrM\n" ++ show univ ++ "\n" ++ show [(x, val x) | x <- univ] ++ "\n" ++ show rel
+                    intKr@(KrM univ val rel) <- genIntKripkeModel
+                    let expected = "KrM\n" ++ show univ ++ "\n" ++ show [(x, val x) | x <- univ] ++ "\n" ++ show rel
                     return $ show intKr == expected
 
         describe "Show KripkeModel" $ do
@@ -283,69 +294,69 @@ spec =  describe "translateFormToKr" $ do
             -- Helper functions
             let   
                 -- Example models (completed)
-                intW0, intW1, intW2 :: IntWorld
+                intW0, intW1, intW2 :: World Integer
                 intW0 = 0; intW1 = 1; intW2 = 2
                 intUniverse1 = [intW0, intW1, intW2]
                 intValuation1 w | w == 0 || w == 1 = [1] | w == 2 = [] | otherwise = []
                 intRelation1 = [(0, 0), (0, 1), (1, 0), (1, 1), (2, 2)]
-                intModel1 = IntKrM intUniverse1 intValuation1 intRelation1
+                intModel1 = KrM intUniverse1 intValuation1 intRelation1
                 exampleModel1 = convertToWorldStateModel intModel1
 
-                intW20, intW21, intW22 :: IntWorld
+                intW20, intW21, intW22 :: World Integer
                 intW20 = 20; intW21 = 21; intW22 = 22
                 intUniverse2 = [intW20, intW21, intW22]
                 intValuation2 w | w == 20 = [1] | w == 21 = [] | w == 22 = [1] | otherwise = []
                 intRelation2 = [(20, 21), (21, 22)]
-                intModel2 = IntKrM intUniverse2 intValuation2 intRelation2
+                intModel2 = KrM intUniverse2 intValuation2 intRelation2
                 exampleModel2 = convertToWorldStateModel intModel2
 
-                intW30, intW31, intW32 :: IntWorld
+                intW30, intW31, intW32 :: World Integer
                 intW30 = 30; intW31 = 31; intW32 = 32
                 intUniverse3 = [intW30, intW31, intW32]
                 intValuation3 w | w == 30 = [1] | otherwise = []
                 intRelation3 = [(w1, w2) | w1 <- intUniverse3, w2 <- intUniverse3]
-                intModel3 = IntKrM intUniverse3 intValuation3 intRelation3
+                intModel3 = KrM intUniverse3 intValuation3 intRelation3
                 exampleModel3 = convertToWorldStateModel intModel3
 
-                intW40, intW41, intW42 :: IntWorld
+                intW40, intW41, intW42 :: World Integer
                 intW40 = 40; intW41 = 41; intW42 = 42
                 intUniverse4 = [intW40, intW41, intW42]
                 intValuation4 w | w == 40 = [1] | w == 41 = [] | w == 42 = [2] | otherwise = []
                 intRelation4 = []
-                intModel4 = IntKrM intUniverse4 intValuation4 intRelation4
+                intModel4 = KrM intUniverse4 intValuation4 intRelation4
                 exampleModel4 = convertToWorldStateModel intModel4
 
-                intW50, intW51, intW52 :: IntWorld
+                intW50, intW51, intW52 :: World Integer
                 intW50 = 50; intW51 = 51; intW52 = 52
                 intUniverse5 = [intW50, intW51, intW52]
                 intValuation5 w | w == 50 = [1, 2] | w == 51 = [1] | w == 52 = [] | otherwise = []
                 intRelation5 = [(50, 51), (51, 52), (52, 50)]
-                intModel5 = IntKrM intUniverse5 intValuation5 intRelation5
+                intModel5 = KrM intUniverse5 intValuation5 intRelation5
                 exampleModel5 = convertToWorldStateModel intModel5
 
-                intW60, intW61, intW62, intW63, intW64 :: IntWorld
+                intW60, intW61, intW62, intW63, intW64 :: World Integer
                 intW60 = 60; intW61 = 61; intW62 = 62; intW63 = 63; intW64 = 64
                 intUniverse6 = [intW60, intW61, intW62, intW63, intW64]
                 intValuation6 w | w == 60 = [1] | w == 61 = [1, 2] | w == 62 = [] | w == 63 = [2] | w == 64 = [1, 2] | otherwise = []
                 intRelation6 = let cluster1 = [60, 61, 62]; cluster2 = [63, 64]
                             in [(w1, w2) | w1 <- cluster1, w2 <- cluster1] ++ [(w1, w2) | w1 <- cluster2, w2 <- cluster2]
-                intModel6 = IntKrM intUniverse6 intValuation6 intRelation6
+                intModel6 = KrM intUniverse6 intValuation6 intRelation6
                 exampleModel6 = convertToWorldStateModel intModel6
 
-                intW70, intW71, intW72, intW73, intW74, intW75 :: IntWorld
+                intW70, intW71, intW72, intW73, intW74, intW75 :: World Integer
                 intW70 = 70; intW71 = 71; intW72 = 72; intW73 = 73; intW74 = 74; intW75 = 75
                 intUniverse7 = [intW70, intW71, intW72, intW73, intW74, intW75]
                 intValuation7 w | w == 70 = [1] | w == 71 = [1, 2] | w == 72 = [2] | w == 73 = [] | w == 74 = [1] | w == 75 = [1, 2] | otherwise = []
                 intRelation7 = let cluster = [71, 72, 73, 74, 75]
                             in [(70, w) | w <- cluster] ++ [(w1, w2) | w1 <- cluster, w2 <- cluster]
-                intModel7 = IntKrM intUniverse7 intValuation7 intRelation7
+                intModel7 = KrM intUniverse7 intValuation7 intRelation7
                 exampleModel7 = convertToWorldStateModel intModel7
 
                 modelKL7 = fromJust (kripkeToKL exampleModel7 (makeWorldState 70))
                 modelKL7b = fromJust (kripkeToKL exampleModel7 (makeWorldState 71))
                 ref = translateFormToKL (impl (Box (P 99)) (P 99))
 
-                smallModels :: [KripkeModel]
+                smallModels :: [KripkeModel WorldState]
                 smallModels = [exampleModel1, exampleModel2, exampleModel3, exampleModel4, exampleModel5, exampleModel6, exampleModel7]
 
 
@@ -441,11 +452,11 @@ arePointedBisimilar km1 w1 km2 w2 =
     where
         successors w r = [w' | (u, w') <- r, u == w]
 -}
-areEquivalent :: [KripkeModel] -> ModForm -> ModForm -> Bool
+areEquivalent :: (Eq a, Ord a) => [KripkeModel a] -> ModForm -> ModForm -> Bool
 areEquivalent models f1 f2 = 
     all (\m -> all (\w -> makesTrue (m, w) f1 == makesTrue (m, w) f2) (universe m)) models
 
-testTruthPres :: KripkeModel -> WorldState -> ModForm -> Maybe Bool
+testTruthPres :: KripkeModel WorldState -> WorldState -> ModForm -> Maybe Bool
 testTruthPres km w g = 
     case kripkeToKL km w of
     Nothing -> Nothing
