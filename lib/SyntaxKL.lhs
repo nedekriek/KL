@@ -11,16 +11,14 @@ import Test.QuickCheck
 \end{code}
 
 \textbf{Symbols of $\mathcal{KL}$}\\
-
 The language \(\mathcal{KL}\) is built on the following alphabet:
 \begin{itemize}
     \item \textbf{Variables}: \(x, y, z, \ldots\) (an infinite set).
-    \item \textbf{Constants}: \(c, d, "1, "2, \ldots\) (including standard names).
+    \item \textbf{Constants}: \(c, d, n1, n2, \ldots\) (including standard names).
     \item \textbf{Function symbols}: \(f, g, h, \ldots\) (with associated arities).
     \item \textbf{Predicate symbols}: \(P, Q, R, \ldots\) (with associated arities).
     \item \textbf{Logical symbols}: \(\neg, \vee, \exists, =, $\mathbf{K}$, (, )\).
 \end{itemize}
-
 In this our implementation, standard names are represented as strings (e.g., "n1", "n2") via the \verb?StdName? type, and variables are similarly encoded as strings (e.g., "x", "y") with the \verb?Variable? type, ensuring that we have a distinct yet infinite supplies of each.
 
 \begin{code}
@@ -51,18 +49,17 @@ instance Arbitrary Variable where
 
 \textbf{Terms, Atoms, and Formulas}\\
 The syntax of \(\mathcal{KL}\) is defined recursively in Backus-Naur Form as follows:\\
-
 Terms represent objects in the domain:
 \begin{verbatim}
 <term> ::= <variable> | <constant> | <function-term>
 <variable> ::= "x" | "y" | "z" | ...
-<constant> ::= "c" | "d" | ""1" | ""2" | ...
+<constant> ::= "c" | "d" | "n1" | "n2" | ...
 <function-term> ::= <function-symbol> "(" <term-list> ")"
 <function-symbol> ::= "f" | "g" | "h" | ...
 <term-list> ::= <term> | <term> "," <term-list>
 \end{verbatim}
 
-Well-formed formulas (wffs) define the logical expressions:\\
+Well-formed formulas (wffs) define the logical expressions:
 \begin{verbatim}
 <wff> ::= <atomic-wff> | <negated-wff> | <disjunction-wff> | 
           <existential-wff> | <knowledge-wff>
@@ -70,9 +67,9 @@ Well-formed formulas (wffs) define the logical expressions:\\
 <predicate> ::= <predicate-symbol> "(" <term-list> ")"
 <predicate-symbol> ::= "P" | "Q" | "R" | ...
 <equality> ::= <term> "=" <term>
-<negated-wff> ::= "¬" <wff>
-<disjunction-wff> ::= "(" <wff> "v" <wff> ")"
-<existential-wff> ::= "∃" <variable> "." <wff>
+<negated-wff> ::= "\not" <wff>
+<disjunction-wff> ::= "(" <wff> "\lor" <wff> ")"
+<existential-wff> ::= "\exists" <variable> "." <wff>
 <knowledge-wff> ::= "K" <wff>
 \end{verbatim}
 
@@ -80,24 +77,21 @@ Predicate and function symbols have implicit arities, abstracted here for genera
 Furthermore, the epistemic operator \(\mathbf{K}\) allows nested expressions, e.g., \(\mathbf{K} \neg \mathbf{K} P(x)\).\\
 Sentences of $\mathcal{KL}$ can look like this:
 \begin{itemize}
-    \item \(Teach(ted, sue)\):
-    \begin{verbatim}
-    <wff> → <atomic-wff> → <predicate> → "Teach" "(" "ted" "," "sue" ")"
-    \end{verbatim}
+    \item \(Teach(ted, sue)\):\\
+    \verb?<wff> -> <atomic-wff> -> <predicate> -> "Teach" "(" "ted" "," "sue" ")"?
     \item \(\boldsymbol{K} \exists x . Teach(x, sam)\):
     \begin{verbatim}
-    <wff> → <knowledge-wff> → "K" <wff>
-          → "K" <existential-wff> → "K" "∃" "x" "." <wff>
-          → "K" "∃" "x" "." "Teach" "(" "x" "," "sam" ")"
+    <wff> -> <knowledge-wff> -> "K" <wff>
+          -> "K" <existential-wff> → "K" "\exists" "x" "." <wff>
+          -> "K" "\exists" "x" "." "Teach" "(" "x" "," "sam" ")"
     \end{verbatim}
     \item \(\neg \boldsymbol{K} Teach(tina, sue)\):
     \begin{verbatim}
-    <wff> → <negated-wff> → "¬" <wff>
-          → "¬" <knowledge-wff> → "¬" "K" <wff>
-          → "¬" "K" "Teach" "(" "tina" "," "sue" ")"
+    <wff> -> <negated-wff> -> "\neg" <wff>
+          -> "\neg" <knowledge-wff> -> "\neg" "K" <wff>
+          -> "\neg" "K" "Teach" "(" "tina" "," "sue" ")"
     \end{verbatim}
 \end{itemize}
-
 To distinguish primitive terms (those that contain no variable and only a single function symbol) and primitive atoms (those atoms that contain no variables and only standard names as terms) for semantic evaluation, we also define \verb?PrimitiveTerm? and \verb?PrimitiveAtom?.
 
 \begin{code}
