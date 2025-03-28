@@ -17,13 +17,14 @@ import SemanticsKL
 \end{code}
 
 \subsection{Preliminaries}
-We want to compare $\mathcal{KL}$ and Standard Epistemic Logic based on Kripke frames. (Call this SEL). For example, we might want to compare the complexity of model checking for $\mathcal{KL}$ and SEL. To do this, we need some way of "translating" between formulas of $\mathcal{KL}$ and formulas of SEL, and between $\mathcal{KL}$-models and Kripke frames. This would allow us to, e.g., (1) take a set of $\mathcal{KL}$-formulas of various lengths and a set of $\mathcal{KL}$-models of various sizes; (2) translate both formulas and models into SEL; (3) do model checking for both (i.e.. on the $\mathcal{KL}$ side, and on the SEL side); (4) compare how time and memory scale with length of formula.\\
+We want to compare $\mathcal{KL}$ and Propositional Modal Logic based on Kripke frames. (Call this PML). For example, we might want to compare the complexity of model checking for $\mathcal{KL}$ and PML. To do this, we need some way of "translating" between formulas of $\mathcal{KL}$ and formulas of PML, and between $\mathcal{KL}$-models and Kripke models. This would allow us to, e.g., (1) take a set of $\mathcal{KL}$-formulas of various lengths and a set of $\mathcal{KL}$-models of various sizes; (2) translate both formulas and models into PML; (3) do model checking for both (i.e.. on the $\mathcal{KL}$ side, and on the PML side); (4) compare how time and memory scale with length of formula.\\
 \noindent Three things need to be borne in mind when designing the translation functions:
 \begin{enumerate}
-    \item The language of $\mathcal{KL}$ is predicate logic, plus a knowledge operator $\mathbf{K}$. The language of SEL, on the other hand, is propositional logic, plus a knowledge operator. So we can only translate from a fragment of the language of $\mathcal{KL}$ to SEL.
-    \item Kripke models are much more general than $\mathcal{KL}$-models. So we can only translate from a fragment of the set of Kripke models into $\mathcal{KL}$-models.
-    \item In Kripke models, there is such a thing as evaluating a formula at various different worlds, whereas this has no equivalent in $\mathcal{KL}$-models. We need to take this fact into account when thinking about adequacy criteria for a translation function.
+    \item The language of $\mathcal{KL}$ is predicate logic, plus a knowledge operator $\mathbf{K}$. The language of SEL, on the other hand, is propositional logic, plus a knowledge operator. 
+    \item Kripke models are much more general than $\mathcal{KL}$ models.
+    \item In Kripke models, there is such a thing as evaluating a formula at various different worlds, whereas this has no equivalent in $\mathcal{KL}$-models. 
 \end{enumerate}
+We deal with the first two points by making some of the translation functions partial; we deal with the third, by, in effect, translating $\mathcal{KL}$ models to pointed Kripke models. Details will be explained in the sections on the respective translation functions below.
 
 \subsection{Syntax and Semantics of SEL}
 
@@ -97,7 +98,6 @@ trueEverywhere (KrM x y z) f = all (\w -> makesTrue (KrM x y z, w) f) x
 Sometimes it will be useful to convert between models of type \verb?KripkeModel WorldState? and models of type \verb?KripkeModel Integer?. To enable this, we provide the following functions:
 
 \begin{code}
---KripkeModel to IntKripkeModel
 translateKrToKrInt :: KripkeModel WorldState -> KripkeModel Integer
 translateKrToKrInt (KrM u v r) = KrM u' v' r' where
    ur = nub u -- the function first gets rid of duplicate worlds in the model
@@ -170,6 +170,12 @@ kripkeToKL :: KripkeModel WorldState -> WorldState -> Maybe Model
 
 What constraints do we want our translation functions to satisfy? We propose that reasonable translation functions should at least satisfy these constraints: for any $\mathcal{KL}$ model \verb?Model w e d?, any translatable $\mathcal{KL}$ formula \verb?f?, any translatable Kripke model \verb?KrM uni val rel?, and any modal formula \verb?g?,
 \begin{enumerate}
+\item Translating formulas back and forth shouldn't change them:
+  \begin{itemize}
+  \item \verb?translateFormToKL (fromJust (translateFormToKr f)) = f?
+  \item \verb?fromJust (translateFormToKr (translateFormToKL g)) = g?
+  \end{itemize}
+
 \item Truth values should be preserved by the translations:
   \begin{itemize}
   \item \verb?Model w e d |= f? iff
@@ -180,12 +186,6 @@ What constraints do we want our translation functions to satisfy? We propose tha
   \newline
   \verb?fromJust (kripkeToKL (KrM uni val rel) w) |= translateFormToKL g?
   \end{itemize}
-
-\item Translating formulas back and forth shouldn't change them:
-  \begin{itemize}
-  \item \verb?translateFormToKL (fromJust (translateFormToKr f)) = f?
-  \item \verb?fromJust (translateFormToKr (translateFormToKL g)) = g?
-  \end{itemize}
 \end{enumerate}
 
 We check that our translation formulas do indeed satisfy these constraint in the test suite (in \verb?TranslatorSpec.lhs?).
@@ -195,8 +195,7 @@ Now we get to the implementation of our translation functions.
 
 \subsection{Translation functions from $\mathcal{KL}$ to Kripke}
 \textbf{Translation functions for formulas}\\
-\verb?translateFormToKr? replaces all of the atomic
-subformulas consisting of the predicate letter "P", followed by a standard name by propositional variables; it returns \verb?Nothing? if the input formula doesn't satisfy this constraint.
+As mentioned above, we translate from a fragment of the language of $\mathcal{KL}$ to the language of propositional modal logic. Specifically, only formulas whose atomic subformulas consist of the predicate letter "P", followed by exactly one standard name, are translated; in this case the function \verb?translateFormToKr? replaces all of the atomic subformulas by propositional variables.
 \begin{code}
 translateFormToKr :: Formula -> Maybe ModForm
 translateFormToKr (Atom (Pred "P" [StdNameTerm (StdName nx)])) = Just $ P (read (drop 1 nx))    
@@ -211,7 +210,7 @@ translateFormToKr _                              = Nothing
 \begin{itemize}
 \item the worlds are all the world states in the epistemic state of the $\mathcal{KL}$ model, plus the actual world state;
 \item for each world, the propositional variables true at it are the translations of the atomic formulas consisting of "P" followed by a standard name that are true at the world state;
-\item the from within the epistemic state all see each other, and the actual world sees all other worlds.
+\item the worlds from within the epistemic state all see each other, and themselves and the actual world sees all other worlds.
 \end{itemize}
 \begin{code}
 translateModToKr :: Model -> KripkeModel WorldState
@@ -220,7 +219,6 @@ translateModToKr (Model w e _) = KrM (nub (w:Set.toList e)) val (nub rel) where
    rel = [(v, v') | v <- Set.toList e, v' <- Set.toList e] ++ [(w,v) | v <- Set.toList e]
 
 --the next two are helper functions:
-
 --identifies true atomic formulas at a world that consist of the predicate "P" followed by a standard name
 trueAtomicPropsAt :: WorldState -> [Proposition]
 trueAtomicPropsAt w = 
@@ -239,12 +237,10 @@ isActuallyAtomic _ = False
 \subsection{Translation functions from Kripke to $\mathcal{KL}$}
 
 \textbf{Translation functions for formulas}\\
-\verb?translateFormToKL? takes a formula of SEL
-and computes the translated $\mathcal{KL}$ formula. Since SEL is a propositional logic, we will immitate this in the language of $\mathcal{KL}$
-by translating it to a unique corresponding atomic formula in $\mathcal{KL}$.
+\verb?translateFormToKL? takes a formula of propositional modal logic and computes the translated $\mathcal{KL}$ formula. Since SEL is a propositional logic, we will immitate this in the language of $\mathcal{KL}$ by translating it to a unique corresponding atomic formula in $\mathcal{KL}$.
 
 \begin{code}
--- Translates an SEL formula (propositional modal logic) to a KL formula (predicate logic with knowledge operator).
+-- Translates an a formula of propositional modal logic to a KL formula (predicate logic with knowledge operator).
 translateFormToKL :: ModForm -> Formula
 translateFormToKL (P n) = Atom (Pred "P" [StdNameTerm (StdName ("n" ++ show n))])  -- Maps proposition P n to atom P(n), e.g., P 1 -> P(n1)
 translateFormToKL (Neg form) = Not (translateFormToKL form)                          -- Negation is preserved recursively
