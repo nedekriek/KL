@@ -62,7 +62,7 @@ Terms represent objects in the domain:
 <term-list> ::= <term> | <term> "," <term-list>
 \end{verbatim}
 
-Well-formed formulas (wffs) define the logical expressions:\\
+Well-formed formulas (wffs) define the logical expressions:
 \begin{verbatim}
 <wff> ::= <atomic-wff> | <negated-wff> | <disjunction-wff> | 
           <existential-wff> | <knowledge-wff>

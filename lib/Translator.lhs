@@ -689,7 +689,7 @@ testTruthPres km w g =
   case kripkeToKL km w of
     Nothing -> False  -- Translation failed, so truth not preserved
     Just klModel -> let klFormula = translateFormToKL g
-                    in makesTrue (km, w) g == satisfiesModel klModel klFormula
+                    in makesTrue (km, w) g == isTrueModel klModel klFormula
 
 -- Test translation succeeds for S5 model
 testTranslationSucceedsModel3 :: Bool
