@@ -20,15 +20,15 @@ import SemanticsKL
 We want to compare $\mathcal{KL}$ and Propositional Modal Logic based on Kripke frames. (Call this PML). For example, we might want to compare the complexity of model checking for $\mathcal{KL}$ and PML. To do this, we need some way of "translating" between formulas of $\mathcal{KL}$ and formulas of PML, and between $\mathcal{KL}$-models and Kripke models. This would allow us to, e.g., (1) take a set of $\mathcal{KL}$-formulas of various lengths and a set of $\mathcal{KL}$-models of various sizes; (2) translate both formulas and models into PML; (3) do model checking for both (i.e.. on the $\mathcal{KL}$ side, and on the PML side); (4) compare how time and memory scale with length of formula.\\
 \noindent Three things need to be borne in mind when designing the translation functions:
 \begin{enumerate}
-    \item The language of $\mathcal{KL}$ is predicate logic, plus a knowledge operator $\mathbf{K}$. The language of SEL, on the other hand, is propositional logic, plus a knowledge operator. 
+    \item The language of $\mathcal{KL}$ is predicate logic, plus a knowledge operator $\mathbf{K}$. The language of PML, on the other hand, is propositional logic, plus a knowledge operator. 
     \item Kripke models are much more general than $\mathcal{KL}$ models.
     \item In Kripke models, there is such a thing as evaluating a formula at various different worlds, whereas this has no equivalent in $\mathcal{KL}$-models. 
 \end{enumerate}
 We deal with the first two points by making some of the translation functions partial; we deal with the third, by, in effect, translating $\mathcal{KL}$ models to pointed Kripke models. Details will be explained in the sections on the respective translation functions below.
 
-\subsection{Syntax and Semantics of SEL}
+\subsection{Syntax and Semantics of PML}
 
-The syntax and semantics of SEL is well-known: the language is just the language of basic modal logic, where the Box operator $\Box$ is interpreted as "It is known that...". Models are Kripke models. A mathematical description of all this can be found in any standard textbook on modal logic, so we focus on the implementation, here.\\
+The syntax and semantics of PML is well-known: the language is just the language of basic modal logic, where the Box operator $\Box$ is interpreted as "It is known that...". Models are Kripke models. A mathematical description of all this can be found in any standard textbook on modal logic, so we focus on the implementation, here.\\
 \\
 \noindent \textbf{Implementation}\\
 \textbf{Syntax}\\
@@ -237,7 +237,7 @@ isActuallyAtomic _ = False
 \subsection{Translation functions from Kripke to $\mathcal{KL}$}
 
 \textbf{Translation functions for formulas}\\
-\verb?translateFormToKL? takes a formula of propositional modal logic and computes the translated $\mathcal{KL}$ formula. Since SEL is a propositional logic, we will immitate this in the language of $\mathcal{KL}$ by translating it to a unique corresponding atomic formula in $\mathcal{KL}$.
+\verb?translateFormToKL? takes a formula of propositional modal logic and computes the translated $\mathcal{KL}$ formula. Since PML is a propositional logic, we will immitate this in the language of $\mathcal{KL}$ by translating it to a unique corresponding atomic formula in $\mathcal{KL}$.
 
 \begin{code}
 -- Translates an a formula of propositional modal logic to a KL formula (predicate logic with knowledge operator).
@@ -339,7 +339,7 @@ kripkeToKL kr@(KrM univ val rel) w
     -- Domain (empty for simplicity)
     newDomain = Set.empty
 
--- Maps an SEL proposition to a KL atom
+-- Maps an PML proposition to a KL atom
 propToAtom :: Proposition -> Atom
 propToAtom n = Pred "P" [StdNameTerm (StdName ("n" ++ show n))]  -- e.g., 1 -> P(n1)
 
