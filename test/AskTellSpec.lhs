@@ -7,6 +7,7 @@ import Test.Hspec
 import AskTell
 import SyntaxKL
 import SemanticsKL
+import Generators
 
 import Test.QuickCheck
 import qualified Data.Map as Map
@@ -34,7 +35,9 @@ spec = describe "ask - Example Tests" $ do
                 it "ask is true for all tautologies" $ do
                         let taut1 = (Or (Not f) (Not (Not f)))
                         -- property $ \e -> (e :: Set WorldState) == e
-                        property $ (\e, d -> (e :: Set WorldState)) $ (\d ->  forAll (d :: Set StdName)) $ tell (:: Set StdName) d (e) taut1
+                        property $ \e -> 
+                            forAll genStdNameSet $ \d' -> 
+                                tell  (d' :: Set StdName) (e :: Set WorldState) taut1 `shouldBe` e
                         
                         
                          -- $ forAll \d -> d :: Set 
