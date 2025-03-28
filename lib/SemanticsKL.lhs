@@ -46,7 +46,7 @@ type EpistemicState = Set WorldState
 We can construct world states by using \verb?mkWorldState?, which builds a \verb?WorldState? from lists of primitive atoms and terms. 
 While a \verb?WorldState? is defined in terms of \verb?Atom? and \verb?Term?, we use \verb?mkWorldState? to make sure that we can only have primitive atoms and primitive terms in the mapping.
 To be able to use primitive terms and atoms in other functions just as we would use \verb?Atom? and \verb?Term? (since primitive atoms and primitive terms are atoms and terms as well), we convert the constructors to those of regular terms and atoms.
-We then use the function \verb?checkDups? to ensure that there are no contradictions in the world state (e.g., P(n1) mapped to both True and False), thus reinforcing the single-valuation principle (\cite{Lokb}, p. 24).
+We then use the function \verb?checkDups? to ensure that there are no contradictions in the world state (e.g., P(n1) mapped to both \verb?True? and \verb?False?), thus reinforcing the single-valuation principle (\cite{Lokb}, p. 24).
 The function \verb?mkWorldState? then constructs maps for efficient lookup.
 
 \begin{code}
@@ -237,9 +237,9 @@ groundFormula f dom = groundFormula' f >>= groundExists dom
 
 This function takes a formula and a domain of standard names and returns a list of all possible ground instances of the formula by substituting its free variables with elements from the domain.
 We use a function \verb?variables? that identifies all the variables in a formula that need grounding or substitution. 
-If the Boolean '\verb?includeBound?' is '\verb?True?', \verb?variables? returns all variables (free and bound) in the formula.
-If '\verb?includeBound?' is '\verb?False?', it returns only free variables, excluding those bound by quantifiers.
-This way, we can use the function to support both '\verb?freeVars?' (free variables only) and '\verb?allVariables?' (all variables).
+If the Boolean \verb?includeBound? is \verb?True?, \verb?variables? returns all variables (free and bound) in the formula.
+If \verb?includeBound? is \verb?False?, it returns only free variables, excluding those bound by quantifiers.
+This way, we can use the function to support both \verb?freeVars? (free variables only) and \verb?allVariables? (all variables).
 
 \begin{code}
 -- Collects variables in a formula, with a flag to include bound variables
