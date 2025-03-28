@@ -100,7 +100,7 @@ spec =  describe "evalTerm - Unit Tests" $ do
                 show (subst (Var "x") (StdName "n2") formula) `shouldBe` show (K (Atom (Pred "P" [StdNameTerm $ StdName "n2"])))
 
 
-        describe "satisfiesModel - Property Tests" $ do
+        describe "isTrueModel - Property Tests" $ do
             -- test fixtures
             let x = Var "x"
                 n1 = StdNameTerm $ StdName "n1"
@@ -109,36 +109,36 @@ spec =  describe "evalTerm - Unit Tests" $ do
                 px = Atom (Pred "P" [VarTerm x])
                 py = Atom (Pred "P" [VarTerm $ Var "y"])
                 pt = Atom (Pred "P" [n1])
-            context "satisfiesModel satisfies validities when atoms are ground" $ do
-                it "satisfiesModel satisfies P -> ~~ P" $ do
-                    property $ \m -> satisfiesModel m (Or (Not p) (Not (Not p))) `shouldBe` True
-                it "satisfiesModel satisfies P(t) -> ~~ P(t)" $ do
-                    property $ \m -> satisfiesModel m (Or (Not pt) (Not (Not pt))) `shouldBe` True
-                it "satisfiesModel errors for P(x) -> ~~ P(x)" $ do
-                    property $ \m -> evaluate (satisfiesModel m (Or (Not px) (Not (Not px)))) `shouldThrow` anyException
-                it "satisfiesModel satisfies t=t" $ do
-                    property $ \m -> satisfiesModel m (Equal n1 n1) `shouldBe` True
-                it "satisfiesModel errors for x=x" $ do
-                    property $ \m -> evaluate (satisfiesModel m (Equal (VarTerm x) (VarTerm x))) `shouldThrow` anyException
-                it "satisfiesModel satisfies ForAll x (P(x) -> P(x))" $ do 
-                    property $ \m -> satisfiesModel m (Not (Exists x (Not (Or (Not px) px)))) `shouldBe` True
-                it "satisfiesModel satisfies ForALL x (P(x) -> ~~ P(x))" $ do 
-                    property $ \m -> satisfiesModel m (Not (Exists x (Not (Or (Not px) (Not (Not px))))) ) `shouldBe` True
-                it "satisfiesModel satisfies ForAll x (P(x) -> Exists y P(y))" $ do 
-                    property $ \m -> satisfiesModel m (Not (Exists x (Not (Or (Not px) (Exists (Var "y") py)) ))) `shouldBe` True
-                it "satisfiesModel satisfies ((n1 = n2) -> K (n1 = n2)" $ do
-                    property $ \m -> satisfiesModel m (Or (Not (Equal n1 n2)) (K (Equal n1 n2))) `shouldBe` True
-                it "satisfiesModel satisfies ((n1 /= n2) -> K (n1 /= n2)" $ do
-                    property $ \m -> satisfiesModel m (Or (Not (Not (Equal n1 n2))) (K (Not (Equal n1 n2)))) `shouldBe` True            
-                it "satisfiesModel satisfies (K alpha -> K K alpha)" $ do
-                    property $ \m -> satisfiesModel m (Or (Not (K pt)) (K (K pt))) `shouldBe` True
-                it "satisfiesModel satisfies (~K alpha -> K ~K alpha)" $ do
-                    property $ \m -> satisfiesModel m (Or (Not (Not (K pt))) (K (Not (K pt)))) `shouldBe` True
-            context "satisfiesModel does not satisfy contradictions when atoms are ground" $ do
-                it "satisfiesModel does not satisfy ~(P v ~P)" $ do
-                    property $ \m -> satisfiesModel m (Not (Or p (Not p))) `shouldBe` False
-                it "satisfiesModel does not satisfy (Exists x (x /= x))" $ do
-                    property $ \m -> satisfiesModel m (Exists x (Not (Equal (VarTerm x) (VarTerm x)))) `shouldBe` False
+            context "isTrueModel satisfies validities when atoms are ground" $ do
+                it "isTrueModel satisfies P -> ~~ P" $ do
+                    property $ \m -> isTrueModel m (Or (Not p) (Not (Not p))) `shouldBe` True
+                it "isTrueModel satisfies P(t) -> ~~ P(t)" $ do
+                    property $ \m -> isTrueModel m (Or (Not pt) (Not (Not pt))) `shouldBe` True
+                it "isTrueModel errors for P(x) -> ~~ P(x)" $ do
+                    property $ \m -> evaluate (isTrueModel m (Or (Not px) (Not (Not px)))) `shouldThrow` anyException
+                it "isTrueModel satisfies t=t" $ do
+                    property $ \m -> isTrueModel m (Equal n1 n1) `shouldBe` True
+                it "isTrueModel errors for x=x" $ do
+                    property $ \m -> evaluate (isTrueModel m (Equal (VarTerm x) (VarTerm x))) `shouldThrow` anyException
+                it "isTrueModel satisfies ForAll x (P(x) -> P(x))" $ do 
+                    property $ \m -> isTrueModel m (Not (Exists x (Not (Or (Not px) px)))) `shouldBe` True
+                it "isTrueModel satisfies ForALL x (P(x) -> ~~ P(x))" $ do 
+                    property $ \m -> isTrueModel m (Not (Exists x (Not (Or (Not px) (Not (Not px))))) ) `shouldBe` True
+                it "isTrueModel satisfies ForAll x (P(x) -> Exists y P(y))" $ do 
+                    property $ \m -> isTrueModel m (Not (Exists x (Not (Or (Not px) (Exists (Var "y") py)) ))) `shouldBe` True
+                it "isTrueModel satisfies ((n1 = n2) -> K (n1 = n2)" $ do
+                    property $ \m -> isTrueModel m (Or (Not (Equal n1 n2)) (K (Equal n1 n2))) `shouldBe` True
+                it "isTrueModel satisfies ((n1 /= n2) -> K (n1 /= n2)" $ do
+                    property $ \m -> isTrueModel m (Or (Not (Not (Equal n1 n2))) (K (Not (Equal n1 n2)))) `shouldBe` True            
+                it "isTrueModel satisfies (K alpha -> K K alpha)" $ do
+                    property $ \m -> isTrueModel m (Or (Not (K pt)) (K (K pt))) `shouldBe` True
+                it "isTrueModel satisfies (~K alpha -> K ~K alpha)" $ do
+                    property $ \m -> isTrueModel m (Or (Not (Not (K pt))) (K (Not (K pt)))) `shouldBe` True
+            context "isTrueModel does not satisfy contradictions when atoms are ground" $ do
+                it "isTrueModel does not satisfy ~(P v ~P)" $ do
+                    property $ \m -> isTrueModel m (Not (Or p (Not p))) `shouldBe` False
+                it "isTrueModel does not satisfy (Exists x (x /= x))" $ do
+                    property $ \m -> isTrueModel m (Exists x (Not (Equal (VarTerm x) (VarTerm x)))) `shouldBe` False
         
 
         describe "freeVars - Unit Tests" $ do
