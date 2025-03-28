@@ -100,13 +100,13 @@ genTransWorldState = do
     WorldState atValues <$> arbitrary
 
 -- Generator for smaller transitive and Euclidean Kripke models
-genSmallTransEucKripke :: Gen KripkeModel
+genSmallTransEucKripke :: Gen (KripkeModel WorldState)
 genSmallTransEucKripke = resize 6 genTransEucKripke
 
 -- Generator for transitive and Euclidean Kripke models
-genTransEucKripke :: Gen KripkeModel
+genTransEucKripke :: Gen (KripkeModel WorldState)
 genTransEucKripke = sized randomModel where
-    randomModel :: Int -> Gen KripkeModel
+    randomModel :: Int -> Gen (KripkeModel WorldState)
     randomModel n = do
       msize <- choose (1, 1+n)
       u <- nub . sort <$> vectorOf msize genTransWorldState
@@ -121,9 +121,9 @@ genTransEucKripke = sized randomModel where
       return (KrM u v r)
 
 -- Generator for arbitrary Kripke models
-genRandomKripkeModel :: Gen KripkeModel
+genRandomKripkeModel :: Gen (KripkeModel WorldState)
 genRandomKripkeModel = sized randomModel where
-    randomModel :: Int -> Gen KripkeModel
+    randomModel :: Int -> Gen (KripkeModel WorldState)
     randomModel n = do
       msize <- choose (1, 1+n)
       u <- nub . sort <$> vectorOf msize genTransWorldState
@@ -136,17 +136,17 @@ genRandomKripkeModel = sized randomModel where
           return (x,y)
       return (KrM u v r')
 
-genSmallRandomucKripke :: Gen KripkeModel
+genSmallRandomucKripke :: Gen (KripkeModel WorldState)
 genSmallRandomucKripke = resize 6 genRandomKripkeModel
 
 
-genIntKripkeModel :: Gen IntKripkeModel
+genIntKripkeModel :: Gen (KripkeModel Integer)
 genIntKripkeModel = do
   n <- choose (1, 6::Integer)  -- Small universe for simplicity
   let univ = [0 .. n-1]
   val <- vectorOf (fromInteger n) (sublistOf [1..4]) >>= \props -> return $ \w -> props !! fromInteger w
   rel <- sublistOf [(w, w') | w <- univ, w' <- univ]
-  return $ IntKrM univ val rel
+  return $ KrM univ val rel
 
 transEucClosure :: Eq a => [(a,a)] -> [(a,a)]
 transEucClosure relation
@@ -155,11 +155,11 @@ transEucClosure relation
     closure = nub $ relation ++ [(a,c) | (a,b) <- relation, (b',c) <- relation, b == b'] ++ [(b,c) | (a,b) <- relation, (a',c) <- relation, a == a']
 
 -- Generator, which, given a KripkeModel, picks a world
-genWorldFrom :: KripkeModel -> Gen World
+genWorldFrom :: (KripkeModel a) -> Gen (World a)
 genWorldFrom m = elements (universe m)
 
 -- Generator for a pair consisting of a transitive, Euclidean model, and a world in that model
-genTransEucKripkeWithWorld :: Gen (KripkeModel, World)
+genTransEucKripkeWithWorld :: Gen (KripkeModel WorldState, World WorldState)
 genTransEucKripkeWithWorld = do
   m <- genSmallTransEucKripke
   w <- genWorldFrom m

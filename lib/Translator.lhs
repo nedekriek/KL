@@ -61,73 +61,64 @@ instance Arbitrary ModForm where
 
 \underline{\textbf{Semantics}}
 
-In our implementation of Kripke Models, we let the worlds be \verb?WorldStates?, as defined in \verb?SemanticsKL?. This simplifies the translation functions, and otherwise doesn't matter, as the internal constitution of the worlds in a Kripke Model is irrelevant for the truth and validity of formulas in the model.
+For some parts of our project, it will be most convenient to let Kripke models have \verb?WorldState?s (as defined in \verb?SemanticsKL?) as worlds; for others, to have the worlds be \verb?Integer?s. We therefore implement Kripke models as a polymorphic data type, as follows: 
 
 \begin{code}
 --definition of models
-type World = WorldState
-type Universe = [World]
+type World a = a
+type Universe a = [World a]
 type Proposition = Int
 
-type Valuation = World -> [Proposition]
-type Relation = [(World,World)]
+type Valuation a = World a -> [Proposition]
+type Relation a = [(World a,World a)]
 
-data KripkeModel = KrM 
-   { universe :: Universe
-   , valuation :: Valuation 
-   , relation :: Relation }
+data KripkeModel a = KrM 
+   { universe :: Universe a
+   , valuation :: Valuation a
+   , relation :: Relation a}
 
 --definition of truth for modal formulas
 --truth at a world
-makesTrue :: (KripkeModel,World) -> ModForm -> Bool
+makesTrue :: Eq a => (KripkeModel a, World a) -> ModForm -> Bool
 makesTrue (KrM _ v _, w) (P k)     = k `elem` v w
 makesTrue (m,w)          (Neg f)   = not (makesTrue (m,w) f)
 makesTrue (m,w)          (Dis f g) = makesTrue (m,w) f || makesTrue (m,w) g
 makesTrue (KrM u v r, w) (Box f)   = all (\w' -> makesTrue (KrM u v r,w') f) (r ! w)
 
-(!) :: Relation -> World -> [World]
+(!) :: Eq a => Relation a -> World a -> [World a]
 (!) r w = map snd $ filter ((==) w . fst) r
 
 --truth in a model
-trueEverywhere :: KripkeModel -> ModForm -> Bool
+trueEverywhere :: Eq a => KripkeModel a -> ModForm -> Bool
 trueEverywhere (KrM x y z) f = all (\w -> makesTrue (KrM x y z, w) f) x
+
 \end{code}
 
-Sometimes, it will still be useful to represent Kripke Models by using Integers as worlds. We therefore define an additional type \verb?IntKripkeModel?:
-
-\begin{code}
-type IntWorld = Integer
-type IntUniverse = [IntWorld]
-type IntValuation = IntWorld -> [Proposition]
-type IntRelation = [(IntWorld, IntWorld)]
-data IntKripkeModel = IntKrM IntUniverse IntValuation IntRelation
-\end{code}
-
-Sometimes it will also be usefuel to convert between \verb?KripkeModel? and \verb?IntKripkeModel. To enable this, we provide the following functions:
+Sometimes it will be useful to convert between models of type \verb?KripkeModel WorldState? and models of type \verb?KripkeModel Integer?. To enable this, we provide the following functions:
 
 \begin{code}
 --KripkeModel to IntKripkeModel
-translateKrToKrInt :: KripkeModel -> IntKripkeModel
-translateKrToKrInt (KrM u v r) = IntKrM u' v' r' where
+translateKrToKrInt :: KripkeModel WorldState -> KripkeModel Integer
+translateKrToKrInt (KrM u v r) = KrM u' v' r' where
    ur = nub u -- the function first gets rid of duplicate worlds in the model
    u' = take (length ur) [0..] 
    v' n = v (intToWorldState ur n) where
-      intToWorldState :: Universe -> Integer -> WorldState
+      intToWorldState :: Universe WorldState -> Integer -> WorldState
       intToWorldState urc nq = urc !! integerToInt nq
    r' = [(worldStateToInt ur w, worldStateToInt ur w') | (w,w') <- r] where
-      worldStateToInt :: Universe -> WorldState -> Integer
+      worldStateToInt :: Universe WorldState-> WorldState -> Integer
       worldStateToInt uni w = toInteger $ fromJust $ elemIndex w uni 
 
-convertToWorldStateModel :: IntKripkeModel -> KripkeModel
-convertToWorldStateModel (IntKrM intUniv intVal intRel) =
+convertToWorldStateModel :: KripkeModel Integer -> KripkeModel WorldState
+convertToWorldStateModel (KrM intUniv intVal intRel) =
   let worldStates = map makeWorldState intUniv
       worldToInt :: WorldState -> Integer
       worldToInt ws = case find (\(_, w) -> w == ws) (zip intUniv worldStates) of
                         Just (i, _) -> i
                         Nothing -> error "WorldState not found in universe"
-      newVal :: Valuation
+      newVal :: Valuation WorldState
       newVal ws = intVal (worldToInt ws)
-      newRel :: Relation
+      newRel :: Relation WorldState
       newRel = [(makeWorldState i, makeWorldState j) | (i, j) <- intRel]
   in KrM worldStates newVal newRel
 
@@ -138,37 +129,26 @@ makeWorldState n =
 
 \end{code}
 
-To be able to print Models, let's define a \verb?Show? instance for \verb?IntKripkeModel?, and for \verb?KripkeModel?:
+To be able to print models, we define a \verb?Show? instance for \verb?KripkeModel a?:
 \begin{code}
-instance Show IntKripkeModel where
-   show (IntKrM uni val rel) = "IntKrM\n" ++ show uni ++ "\n" ++ show [(x, val x) | x <- uni ] ++ "\n" ++ show rel
+instance Show a => Show (KripkeModel a) where
+   show (KrM uni val rel) = "KrM\n" ++ show uni ++ "\n" ++ show [(x, val x) | x <- uni ] ++ "\n" ++ show rel
 \end{code}
-We also define a \verb?Show? Instance for \verb?KripkeModel?, which just shows the \verb?KripkeModel? converted to an \verb?IntKripkeModel?; the rationale for this is that Integers look much nicer than a \verb?WorldState? when printed.
-\begin{code}
-instance Show KripkeModel where
-   show m = show $ translateKrToKrInt m
-\end{code}
-Note that we are breaking with the convention that the \verb?show? function should return what you need to type into ghci to define the object; however, we feel justified in doing this because of the greater user friendliness it provides.\\
 
 Later, we will want to compare models for equality; so we'll also define an \verv?Eq? instance. Comparison for equality will work, at least as long as models are finite. The way this comparison works is by checking that the valuations agree on all worlds in the model. By sorting before checking for equality, we ensure that the order in which worlds appear in the list of worlds representing the universe, the order in which true propositions at a world appear, and the order in which pairs appear in the relation doesn't affect the comparison.
 \begin{code}
-instance Eq KripkeModel where
+instance (Eq a, Ord a) => Eq (KripkeModel a) where
    (KrM u v r) == (KrM u' v' r') = 
       (nub. sort) u == (nub. sort) u' && all (\w -> (nub. sort) (v w) ==  (nub. sort) (v' w)) u && (nub. sort) r == (nub. sort) r'
-
-instance Eq IntKripkeModel where 
-   (IntKrM u v r) == (IntKrM u' v' r') = 
-      (nub. sort) u == (nub. sort) u' && all (\w -> (nub. sort) (v w) ==  (nub. sort) (v' w)) u && (nub. sort) r == (nub. sort) r'
 \end{code}
-\emph{NB:} the following is possible: Two \verb?KripkeModel?s are equal, we convert both to \verb?IntKripkeModel?s and the resulting \verb?IntKripkeModel?s are not equal. \\
+\emph{NB:} the following is possible: Two models of type \verb?KripkeModel WorldState?s are equal, we convert both to models of type \verb?KripkeModel Integer?s and the resulting models are not equal. \\
 
-Why is this possible? Because when checking for equality on \verb?KripkeModel?s, we ignore the order of worlds in the list that defines the universe; but for the conversion to \verb?IntKripkeModel?, the order matters! Similarly, we may get \verb?translateModToKr model1 == kripkeM1?, but when we print the lhs and rhs of the equation, we get different results. This is perfectly fine, and not unexpected, since the printing of a \verb?KripkeModel? works via converting it to a \verb?IntKripkeModel?, and then printing it.
+Why is this possible? Because when checking for equality between models of type \verb?KripkeModel WorldState?s, we ignore the order of worlds in the list that defines the universe; but for the conversion to \verb?KripkeModel Integer?, the order matters!
 
 \subsection{Translation functions: KL to Kripke}
 \textbf{Desiderata}\\
 In our implementation, to do justice to the the fact that translation functions can only sensibly be defined for \emph{some} Kripke models, and \emph{some} $\mathcal{KL}$ formulas, we use the \verb?Maybe? monad provided by Haskell.\\
-To do justice to the fact that evaluating in a $\mathcal{KL}$-model is more like evaluating a formula at a specific world in a Kripke Model, than like evaluating a formula with respect to a whole Kripke model, we translate from pairs of Kripke models and worlds 
-to $\mathcal{KL}$-models, rather than just from Kripke models to $\mathcal{KL}$-models. \\
+To do justice to the fact that evaluating in a $\mathcal{KL}$-model is more like evaluating a formula at a specific world in a Kripke model, than like evaluating a formula with respect to a whole Kripke model, we translate from pairs of Kripke models and worlds to $\mathcal{KL}$-models, rather than just from Kripke models to $\mathcal{KL}$-models. \\
 Thus, these are the types of our translation functions:
 \begin{enumerate}
 \item \begin{verbatim}
@@ -176,19 +156,19 @@ translateFormToKr :: Formula -> Maybe ModForm
 \end{verbatim}
 
 \item \begin{verbatim}
-translateFormToKr :: Formula -> Maybe ModForm
+translateFormToKL :: ModForm -> Formula
 \end{verbatim}
 
 \item \begin{verbatim}
-translateModToKr :: Model -> KripkeModel
+translateModToKr :: Model -> KripkeModel WorldState
 \end{verbatim}
 
 \item \begin{verbatim}
-kripkeToKL :: KripkeModel -> WorldState -> Maybe Model
+kripkeToKL :: KripkeModel WorldState -> WorldState -> Maybe Model
 \end{verbatim}
 \end{enumerate}
 
-What constraints do we want our translation functions to satisfy? We propose that reasonable translation functions should at least satisfy these constraints: for any KL model \verb?Model w e d?, any translatable KL formula \verb?f?, any translatable Kripke model \verb?KrM uni val rel?, and any SEL formula \verb?g?,
+What constraints do we want our translation functions to satisfy? We propose that reasonable translation functions should at least satisfy these constraints: for any $\mathcal{KL}$ model \verb?Model w e d?, any translatable $\mathcal{KL}$ formula \verb?f?, any translatable Kripke model \verb?KrM uni val rel?, and any modal formula \verb?g?,
 \begin{enumerate}
 \item Truth values should be preserved by the translations:
   \begin{itemize}
@@ -227,14 +207,14 @@ translateFormToKr _                              = Nothing
 \end{code}
 
 \textbf{Translation functions for models}\\
-\verb?translateModToKr? takes an epistemic model, and creates a Kripke model, where 
+\verb?translateModToKr? takes a $\mathcal{KL}$ model, and returns a Kripke model, where 
 \begin{itemize}
-\item the worlds are all the world states in the epistemic state, plus the actual world state;
+\item the worlds are all the world states in the epistemic state of the $\mathcal{KL}$ model, plus the actual world state;
 \item for each world, the propositional variables true at it are the translations of the atomic formulas consisting of "P" followed by a standard name that are true at the world state;
 \item the from within the epistemic state all see each other, and the actual world sees all other worlds.
 \end{itemize}
 \begin{code}
-translateModToKr :: Model -> KripkeModel
+translateModToKr :: Model -> KripkeModel WorldState
 translateModToKr (Model w e _) = KrM (nub (w:Set.toList e)) val (nub rel) where
    val = trueAtomicPropsAt
    rel = [(v, v') | v <- Set.toList e, v' <- Set.toList e] ++ [(w,v) | v <- Set.toList e]
@@ -349,7 +329,7 @@ In a $\mathcal{KL$} model, the epistemic state must ensure mutual accessibility 
 
 \begin{code}
 -- Main function: Convert Kripke model to KL model
-kripkeToKL :: KripkeModel -> WorldState -> Maybe Model
+kripkeToKL :: KripkeModel WorldState -> WorldState -> Maybe Model
 kripkeToKL kr@(KrM univ val rel) w
   | not (isEuclidean kr && isTransitive kr) || not (isInUniv w univ) = Nothing
   | otherwise = Just (Model newWorldState newEpistemicState newDomain)
@@ -388,7 +368,7 @@ uniqueProps f = nub (propsIn f)
     propsIn (Box g)     = propsIn g
 
 -- Generate all possible valuations explicitly
-allValuations :: [World] -> [Proposition] -> [Valuation]
+allValuations :: Ord a => [World a] -> [Proposition] -> [Valuation a]
 allValuations univ props = 
   let subsetsP = subsequences props
       allAssignments = replicateM (length univ) subsetsP
@@ -396,18 +376,18 @@ allValuations univ props =
      | assignment <- allAssignments ]
 
 -- Checks whether a Kripke formula is valid on a given Kripke model 
-isValidKr :: ModForm -> KripkeModel -> Bool
+isValidKr :: (Eq a, Ord a) => ModForm -> KripkeModel a -> Bool
 isValidKr f (KrM univ _ rel) = 
   let props = uniqueProps f
       valuations = allValuations univ props
   in all (\v -> all (\w -> makesTrue (KrM univ v rel, w) f) univ) valuations
 
 -- Checks if a Kripke model is Euclidean
-isEuclidean :: KripkeModel -> Bool
+isEuclidean :: (Eq a, Ord a) => KripkeModel a -> Bool
 isEuclidean = isValidKr (Dis (Box (Neg (P 1))) (Box (dia (P 1))))
   -- \Box \neg P1 \lor \Box \Diamond P1 holds for Euclidean relations
 
 -- Checks if a Kripke model is transitive
-isTransitive :: KripkeModel -> Bool
+isTransitive :: (Eq a, Ord a) => KripkeModel a -> Bool
 isTransitive = isValidKr (Dis (Neg (Box (P 1))) (Box (Box (P 1))))  -- \neg \Box P1 \lor \Box \Box P1 holds for transitive relations
 \end{code}
