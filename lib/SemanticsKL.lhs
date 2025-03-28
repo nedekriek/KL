@@ -1,9 +1,10 @@
 % \section{$\mathcal{KL}$: Syntax and Semantics}\label{sec:KLmodel}
 
 \subsection{Semantics of \texorpdfstring{ $\mathcal{KL}$}{KL}}\label{subsec:KLsemantics}
-$\mathcal{KL}$ is an epistemic extension of first-order logic designed to model knowledge and uncertainty, as detailed in \textcite{Lokb}.
-It introduces a knowledge operator $\mathbf{K}$ and uses an infinite domain $\mathcal{N}$ of standard names to denote individuals. 
-Formulas are evaluated in world states: consistent valuations of atoms and terms, while epistemic states capture multiple possible worlds, reflecting epistemic possibilities.\\
+As we have seen in the previous section, $\mathcal{KL}$ is an epistemic extension of first-order logic. 
+The main differences to classical first-order logic are that introduces a knowledge operator $\mathbf{K}$ and uses an infinite domain $\mathcal{N}$ of standard names to denote individuals.
+It is designed to model knowledge and uncertainty, as detailed in \textcite{Lokb}.\\ 
+Formulas of $\mathcal{KL}$ are evaluated in world states: consistent valuations of atoms and terms, while epistemic states capture multiple possible worlds, reflecting epistemic possibilities.\\
 The semantics are implemented in the \verb?SemanticsKL? module, which imports syntactic definitions from \verb?SyntaxKL? and uses Haskell's \verb?Data.Map? and \verb?Data.Set? for efficient and consistent mappings.
 
 \begin{code}
@@ -22,7 +23,7 @@ import Test.QuickCheck
 \end{code}
 
 \textbf{Worlds and Epistemic States}\\
-A \verb?WorldState? represents a single possible world in $\mathcal{KL}$, mapping truth values to primitive atoms and standard names to primitive terms.
+A \verb?WorldState? represents a single possible world in $\mathcal{KL}$, mapping truth values to primitive atoms and standard names to primitive terms. We have implemented it as mapping to atoms and terms instead of just primitive ones, as we make sure when creating a \verb?WorldState? to only use primitive atoms and primitive terms (by the function \verb?mkWorldState?).
 An \verb?EpistemicState?, defined as a set of \verb?WorldState?s, models the set of worlds an agent considers possible, enabling the evaluation of the $\mathbf{K}$ operator.
 
 \begin{code}
@@ -32,6 +33,7 @@ data WorldState = WorldState
    termValues :: Map Term StdName   --Maps (primitive) terms to standard names
   }  deriving (Eq, Ord, Show)
 
+--TODO: hide
 instance Arbitrary WorldState where
   arbitrary :: Gen WorldState
   arbitrary = WorldState <$> arbitrary <*> arbitrary
@@ -43,10 +45,9 @@ type EpistemicState = Set WorldState
 \textbf{Constructing World States}\\
 We can construct world states by using \verb?mkWorldState?, which builds a \verb?WorldState? from lists of primitive atoms and terms. 
 While a \verb?WorldState? is defined in terms of \verb?Atom? and \verb?Term?, we use \verb?mkWorldState? to make sure that we can only have primitive atoms and primitive terms in the mapping.
-To be able to use primitive terms and atoms in other functions just as we would use \verb?Atom? and \verb?Term? (since primitive atoms and primitive terms are atoms and terms as well),
-we convert the constructors to those of regular terms and atoms.
+To be able to use primitive terms and atoms in other functions just as we would use \verb?Atom? and \verb?Term? (since primitive atoms and primitive terms are atoms and terms as well), we convert the constructors to those of regular terms and atoms.
 We then use the function \verb?checkDups? to ensure that there are no contradictions in the world state (e.g., P(n1) mapped to both True and False), thus reinforcing the single-valuation principle (\cite{Lokb}, p. 24).
-\verb?mkWorldState? then constructs maps for efficient lookup.
+The function \verb?mkWorldState? then constructs maps for efficient lookup.
 
 \begin{code}
 -- Constructs a WorldState from primitive atoms and primitive terms
@@ -88,28 +89,15 @@ isPrimitiveAtom (Pred _ args) = all isStdName args
   where isStdName (StdNameTerm _) = True
         isStdName _ = False
 
-
 \end{code}
 
 \textbf{Term Evaluation}\\
 To evaluate a ground term in a world state, we define a function \verb?evalTerm? that takes a \verb?WorldState? and a \verb?Term? and returns a \verb?StdName?. 
 The idea is to map syntactic terms to their semantic values (standard names) in a given world state. 
-The function uses pattern matching to handle the three possible forms of \verb?Term?:
-\begin{itemize}
-\item[1.] \verb?VarTerm? $\mathunderscore$ \\
-If the term is a variable (e.g., x), it throws an error.
-This enforces a precondition that \verb?evalTerm? only works on ground terms (terms with no free variables). 
-In $\mathcal{KL}$, variables must be substituted with standard names before evaluation, aligning with the semantics where only ground terms have denotations (\cite{Lokb}, p. 24). 
-This is a runtime check to catch ungrounded inputs. 
-\item[2.] \verb?StdNameTerm n?\\
-If the term is a standard name wrapped in \verb?StdNameTerm? (e.g., \verb?StdNameTerm (StdName "n1")?), it simply returns the underlying \verb?StdName? (e.g., \verb?StdName "n1"?).
-Standard names in $\mathcal{KL}$ are constants that denote themselves (ibid., p.22). 
-For example, if \verb?n = StdName "n1"?, it represents the individual \verb?n1?, and its value in any world is \verb?n1?. 
-In this case, no lookup or computation is needed.
-\item[3.] \verb?FuncAppTerm f args?\\
-If the term is a function application (e.g., f(n1,n2)), \verb?evalTerm? evaluates the argument, by recursively computing the \verb?StdName? values of each argument in \verb?args? using \verb?evalTerm w?. 
-Next, the ground term is constructed: It builds a new \verb?FuncAppTerm? term where all arguments are standard names (wrapped in \verb?StdNameTerm?), ensuring it's fully ground.
-We then look up the value by querying the \verb?termValues? map in the worldstate w for the denotation of this ground term, erroring on undefined terms.
+The function uses pattern matching to handle the three possible forms of \verb?Term?: \begin{itemize}
+    \item \texttt{VarTerm \_}: Errors, as only ground terms (no free variables) are valid (\cite{Lokb}, p. 24).
+    \item \texttt{StdNameTerm n}: Returns \texttt{n}, since standard names denote themselves (ibid., p. 22).
+    \item \texttt{FuncAppTerm f args}: Recursively evaluates \texttt{args} to \texttt{StdName}s, builds a ground \texttt{FuncAppTerm}, and looks up its value in \texttt{termValues w}, erroring if undefined.
 \end{itemize}
 
 \begin{code}
@@ -128,7 +116,7 @@ evalTerm w t = case t of
 
 \textbf{Groundness and Substitution}\\
 To support formula evaluation, \verb?isGround? and \verb?isGroundFormula? check for the absence of variables, while \verb?substTerm? and \verb?subst? perform substitution of variables with standard names, respecting quantifier scope to avoid a capture.
-We need these functions to be able to define a function that checks whether a formula is satisfiable in a worldstate and epistemic state.
+We need these functions to be able to define a function that checks whether a formula is true in a \verb?WorldState? and \verb?EpistemicState?.
 
 \begin{code}
 -- Check if a term is ground (contains no variables).
@@ -169,8 +157,8 @@ subst x n formula = case formula of
 
 \end{code}
 
-\textbf{Model and Satisfiability}\\
-Since we want to check for satisfiability in a model, we want to make the model explicit:
+\textbf{Truth in a Model}\\
+Since we want to be able check if a formula is true in a model, we want to make the model explicit:
 \begin{code}
 -- Represents a model with an actual world, epistemic state, and domain
 data Model = Model
@@ -179,38 +167,30 @@ data Model = Model
   , domain :: Set StdName          -- Domain of standard names
   } deriving (Show)
 
+--TODO hide
 instance Arbitrary Model where 
   arbitrary:: Gen Model 
   arbitrary = Model <$> arbitrary <*> arbitrary <*> arbitrary
 \end{code}
 
-A \verb?Model? encapsulates an actual world, an epistemic state, and a domain, enabling the evaluation of formulas with the $\mathcal{K}$-operator. 
-\verb?satisfiesModel? implements $\mathcal{KL}$'s satisfaction relation, checking truth across worlds.
+A \verb?Model? encapsulates an actual world, an epistemic state, and a domain, enabling the evaluation of formulas with the $\mathbf{K}$-operator. 
+The function \verb?satisfiesModel? implements $\mathcal{KL}$'s satisfaction relation, checking truth across worlds.
 
 \begin{code}
--- Checks if a formula is satisfied in a model
+-- Checks if a formula is true in a model
 satisfiesModel :: Model -> Formula -> Bool
-satisfiesModel m = satisfies (epistemicState m) (actualWorld m)
-  where
-    satisfies e w formula = case formula of
-      Atom (Pred p terms) ->
-        if all isGround terms
-          then Map.findWithDefault False (Pred p terms) (atomValues w)   -- Default False for undefined atoms
-          else error "Non-ground atom in satisfies!"
-      Equal t1 t2 ->
-        if isGround t1 && isGround t2   -- Equality of denotations
-          then evalTerm w t1 == evalTerm w t2
-          else error "Non-ground equality in satisfies!"
-      Not f ->
-        not (satisfies e w f)
-      Or f1 f2 ->
-        satisfies e w f1 || satisfies e w f2
-      Exists x f -> 
-      -- \(e, w \models \exists x. \alpha\) iff for some name \(n\), \(e, w \models \alpha_n^x\)
-        any (\n -> satisfies e w (subst x n f)) (Set.toList $ domain m)
-      -- \(e, w \models K \alpha\) iff for every \(w' \in e\), \(e, w' \models \alpha\)
-      K f ->
-        all (\w' -> satisfies e w' f) e
+satisfiesModel (Model w _ _) (Atom (Pred p terms)) =
+  if all isGround terms
+    then Map.findWithDefault False (Pred p terms) (atomValues w)
+    else error "Non-ground atom in satisfiesModel!"
+satisfiesModel (Model w _ _) (Equal t1 t2) =
+  if isGround t1 && isGround t2
+    then evalTerm w t1 == evalTerm w t2
+    else error "Non-ground equality in satisfiesModel!"
+satisfiesModel (Model w e d) (Not f) = not (satisfiesModel (Model w e d) f)
+satisfiesModel (Model w e d) (Or f1 f2) = satisfiesModel (Model w e d) f1 || satisfiesModel (Model w e d) f2
+satisfiesModel (Model w e d) (Exists x f) = any (\n -> satisfiesModel (Model w e d) (subst x n f)) (Set.toList d)
+satisfiesModel (Model _ e d) (K f) = all (\w' -> satisfiesModel (Model w' e d) f) e
 
 \end{code}
 
@@ -226,7 +206,7 @@ checkModel m phi = all (satisfiesModel m) (groundFormula phi (domain m))
 
 Note that we use the function \verb?groundFormula? here. 
 Since we have implemented \verb?satisfiesModel? such that it assumes ground formulas or errors out, we decided to handle free variables by grounding formulas, given a set of free standard names to substitute. 
-Alternatives would be to throw an error or always substitute the same standard name. The implementation that we have chosen is more flexible and allows for more varied usage, however it is computationally expensive (We would appreciate it if you have suggestions to improve this).
+Alternatives would be to throw an error or always substitute the same standard name. The implementation that we have chosen is more flexible and allows for more varied usage, however it is computationally expensive. We still decided to handle free variables in this way, as this implementation is the most faithful to the theory as described in \textcite{Lokb}.
 We implement \verb?groundFormula? as follows:
 
 \begin{code}
@@ -275,8 +255,8 @@ variables includeBound = vars
       Not f' -> vars f'
       Or f1 f2 -> vars f1 `Set.union` vars f2
       Exists x f' -> if includeBound
-                     then Set.insert x (vars f') -- Include bound variable x if includeBound is True
-                     else Set.delete x (vars f') -- Exclude bound variable x if includeBound is False
+                     then Set.insert x (vars f') -- Include bound variable x 
+                     else Set.delete x (vars f') -- Exclude bound variable x 
       K f' -> vars f'  -- Variables in the subformula under K (no binding)
 
     varsTerm term = case term of
