@@ -89,13 +89,13 @@ genModForm :: Gen ModForm
 genModForm = sized genFormula
   where
     genFormula :: Int -> Gen ModForm
-    genFormula 0 = P <$> choose (1, 5)  -- Base case: atomic proposition
+    genFormula 0 = P <$> choose (1, 5)  
     genFormula n = frequency
-      [ (2, P <$> choose (1, 5))                  -- Atomic proposition 
-      , (1, Neg <$> genFormula (n `div` 2))       -- Negation
-      , (1, Dis <$> genFormula (n `div` 2)        -- Disjunction
+      [ (2, P <$> choose (1, 5))                   
+      , (1, Neg <$> genFormula (n `div` 2))       
+      , (1, Dis <$> genFormula (n `div` 2)        
                 <*> genFormula (n `div` 2))
-      , (1, Box <$> genFormula (n `div` 2))       -- Box operator
+      , (1, Box <$> genFormula (n `div` 2))       
       ]
 \end{code}
 \hide{
