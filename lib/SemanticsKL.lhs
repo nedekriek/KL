@@ -9,8 +9,6 @@ The semantics are implemented in the \verb?SemanticsKL? module, which imports sy
 
 \vspace{10pt}
 \begin{code}
-
-
 module SemanticsKL where
 
 import SyntaxKL 
@@ -18,8 +16,6 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-
-
 \end{code}
 \hide{
 \begin{code}
@@ -84,7 +80,10 @@ Since we have decided to change the constructors of data of type \verb?Primitive
 This way, we can, if needed, check whether a given \verb?Term? or \verb?Atom? is primitive and then change the constructors appropriately.
 
 
-\vspace{10pt}
+\hide{ 
+  % currently not used but useful for understanding the 
+  % language so we keep it as pesuodo documentation
+  % and for future use
 \begin{code}
 -- Checks if a term is primitive (contains only standard names)
 isPrimitiveTerm :: Term -> Bool
@@ -101,6 +100,7 @@ isPrimitiveAtom (Pred _ args) = all isStdName args
         isStdName _ = False
 
 \end{code}
+}
 
 \textbf{Term Evaluation}\\
 To evaluate a ground term in a world state, we define a function \verb?evalTerm? that takes a \verb?WorldState? and a \verb?Term? and returns a \verb?StdName?. 
