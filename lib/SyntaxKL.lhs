@@ -1,15 +1,13 @@
-
-
 \subsection{Syntax of \texorpdfstring{$\mathcal{KL}$}{KL}}\label{subsec:KLsyntax}
 
 The syntax of the language $\mathcal{KL}$ is described in \textcite{Lokb} and was first developed by Levesque (\cite{levesque1981}).
 The \verb?SyntaxKL? module establishes the foundation for $\mathcal{KL}$'s syntax, defining the alphabet and grammar used in subsequent semantic evaluation.
-\vspace{10pt}
+\hide{
 \begin{code}
-{-# LANGUAGE InstanceSigs #-}
 module SyntaxKL where
 import Test.QuickCheck
 \end{code}
+}
 
 \textbf{Symbols of $\mathcal{KL}$}\\
 The language \(\mathcal{KL}\) is built on the following alphabet:
@@ -22,32 +20,34 @@ The language \(\mathcal{KL}\) is built on the following alphabet:
 \end{itemize}
 In this our implementation, standard names are represented as strings (e.g., "n1", "n2") via the \verb?StdName? type, and variables are similarly encoded as strings (e.g., "x", "y") with the \verb?Variable? type, ensuring that we have a distinct yet infinite supplies of each.
 
-\vspace{10pt}
+\hide{
 \begin{code}
---TODO hide
 arbitraryUpperLetter :: Gen String
 arbitraryUpperLetter = (:[]) <$> elements ['A'..'Z']
---TODO hide
+
 arbitraryLowerLetter :: Gen String
 arbitraryLowerLetter = (:[]) <$> elements ['a'..'z']
+\end{code}
+}
 
+\begin{code}
 -- Represents a standard name (e.g., "n1") from the infinite domain N
 newtype StdName = StdName String deriving (Eq, Ord, Show)
 
---TODO hide
+-- Represents a first-order variable (e.g., "x")
+newtype Variable = Var String deriving (Eq, Ord, Show)
+\end{code}
+\hide{
+\begin{code}
 instance Arbitrary StdName where
   arbitrary:: Gen StdName
   arbitrary = StdName . ("n" ++) . show <$> elements [1 .. 20::Int]
 
--- Represents a first-order variable (e.g., "x")
-newtype Variable = Var String deriving (Eq, Ord, Show)
-
---TODO hide
 instance Arbitrary Variable where
   arbitrary:: Gen Variable
   arbitrary = Var . show <$> elements [1 .. 20::Int]
-
 \end{code}
+}
 
 \textbf{Terms, Atoms, and Formulas}\\
 The syntax of \(\mathcal{KL}\) is defined recursively in Backus-Naur Form as follows:\\
@@ -104,17 +104,6 @@ data Term = VarTerm Variable   -- A variable (e.g., "x")
           | FuncAppTerm String [Term]   -- Function application (e.g., "Teacher" ("x"))
           deriving (Eq, Ord, Show)
 
---TODO hide
-instance Arbitrary Term where
-  arbitrary :: Gen Term
-  arbitrary = sized $ \n -> genTerm (min n 5) where 
-    genTerm 0 = oneof [VarTerm <$> arbitrary, 
-                       StdNameTerm <$> arbitrary]
-    genTerm n = oneof [VarTerm <$> arbitrary, 
-                       StdNameTerm <$> arbitrary, 
-                       FuncAppTerm <$> arbitraryLowerLetter 
-                                   <*> resize (n `div` 2) (listOf1 (genTerm (n `div` 2)))]
-
 -- Terms with no variables and only a single function symbol
 data PrimitiveTerm = PStdNameTerm StdName   -- e.g., "n1"
                     | PFuncAppTerm String [StdName]     
@@ -123,14 +112,6 @@ data PrimitiveTerm = PStdNameTerm StdName   -- e.g., "n1"
 -- Define Atoms as predicates applied to terms
 data Atom = Pred String [Term]  --e.g. "Teach" ("n1", "n2")
   deriving (Eq, Ord, Show)
-
---TODO hide
-instance Arbitrary Atom where
-  arbitrary :: Gen Atom
-  arbitrary = sized $ \n -> genAtom (min n 5) where 
-      genAtom :: Int -> Gen Atom
-      genAtom 0 = Pred <$> arbitraryLowerLetter <*> pure []
-      genAtom n = Pred <$> arbitraryLowerLetter <*> vectorOf n arbitrary
 
 -- Atoms with only standard names as terms
 data PrimitiveAtom = PPred String [StdName]
@@ -144,8 +125,26 @@ data Formula = Atom Atom                -- Predicate (e.g. Teach(x, n1))
               | Exists Variable Formula -- Existential (e.g., exists x (Teach x sue)) 
               | K Formula               -- Knowledge Operator (e.g., K (Teach ted sue))
               deriving (Eq, Ord, Show)
+\end{code}
+\hide{
+\begin{code}
+instance Arbitrary Term where
+  arbitrary :: Gen Term
+  arbitrary = sized $ \n -> genTerm (min n 5) where 
+    genTerm 0 = oneof [VarTerm <$> arbitrary, 
+                       StdNameTerm <$> arbitrary]
+    genTerm n = oneof [VarTerm <$> arbitrary, 
+                       StdNameTerm <$> arbitrary, 
+                       FuncAppTerm <$> arbitraryLowerLetter 
+                                   <*> resize (n `div` 2) (listOf1 (genTerm (n `div` 2)))]
 
---TODO hide
+instance Arbitrary Atom where
+  arbitrary :: Gen Atom
+  arbitrary = sized $ \n -> genAtom (min n 5) where 
+      genAtom :: Int -> Gen Atom
+      genAtom 0 = Pred <$> arbitraryLowerLetter <*> pure []
+      genAtom n = Pred <$> arbitraryLowerLetter <*> vectorOf n arbitrary
+
 instance Arbitrary Formula where
   arbitrary :: Gen Formula 
   arbitrary = sized $ \n -> genFormula (min n 5)   where
@@ -155,7 +154,10 @@ instance Arbitrary Formula where
                           Or <$> genFormula (n `div` 2) <*> genFormula (n `div` 2),
                           Exists <$> arbitrary <*> genFormula (n `div` 2),
                           K <$> genFormula (n `div` 2)]
-                          
+\end{code}
+}
+
+\begin{code}
 -- Universal quantifier as derived form
 klforall :: Variable -> Formula -> Formula
 klforall x f = Not (Exists x (Not f))

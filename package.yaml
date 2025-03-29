@@ -18,6 +18,9 @@ dependencies:
   - random
   - template-haskell
 
+default-extensions:
+  - InstanceSigs
+  
 library:
   source-dirs: lib
 

@@ -1,5 +1,5 @@
 \section{Comparing KL and Epistemic Logic}
-\vspace{10pt}
+\hide{
 \begin{code}
 module Translator where
 
@@ -15,6 +15,7 @@ import Control.Monad (replicateM)
 import SyntaxKL
 import SemanticsKL
 \end{code}
+}
 
 % \subsection{Preliminaries}
 We want to compare $\mathcal{KL}$ and Propositional Modal Logic based on Kripke frames. (Call this PML). For example, we might want to compare the complexity of model checking for $\mathcal{KL}$ and PML. To do this, we need some way of "translating" between formulas of $\mathcal{KL}$ and formulas of PML, and between $\mathcal{KL}$-models and Kripke models. This would allow us to, e.g., (1) take a set of $\mathcal{KL}$-formulas of various lengths and a set of $\mathcal{KL}$-models of various sizes; (2) translate both formulas and models into PML; (3) do model checking for both (i.e.. on the $\mathcal{KL}$ side, and on the PML side); (4) compare how time and memory scale with length of formula.\\
