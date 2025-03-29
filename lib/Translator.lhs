@@ -185,15 +185,10 @@ instance (Eq a, Ord a) => Eq (KripkeModel a) where
    (KrM u v r) == (KrM u' v' r') = 
       (nub. sort) u == (nub. sort) u' && all (\w -> (nub. sort) (v w) ==  (nub. sort) (v' w)) u && (nub. sort) r == (nub. sort) r'
 \end{code}
-\emph{NB:} the following is possible: Two models of type \verb?KripkeModel WorldState?s are equal, we convert both to models of type \verb?KripkeModel Integer?s and the resulting models are not equal. \\
-
-Why is this possible? Because when checking for equality between models of type \verb?KripkeModel WorldState?s, we ignore the order of worlds in the list that defines the universe; but for the conversion to \verb?KripkeModel Integer?, the order matters!
+\emph{NB:} the following is possible: Two models of type \verb?KripkeModel WorldState?s are equal, we convert both to models of type \verb?KripkeModel Integer?s and the resulting models are not equal. Why is this possible? Because when checking for equality between models of type \verb?KripkeModel WorldState?s, we ignore the order of worlds in the list that defines the universe; but for the conversion to \verb?KripkeModel Integer?, the order matters!
 
 \subsection{Translation functions: KL to Kripke}
-% \textbf{Desiderata}\\
-In our implementation, to do justice to the the fact that translation functions can only sensibly be defined for \emph{some} Kripke models, and \emph{some} $\mathcal{KL}$ formulas, we use the \verb?Maybe? monad provided by Haskell.\\
-To do justice to the fact that evaluating in a $\mathcal{KL}$-model is more like evaluating a formula at a specific world in a Kripke model, than like evaluating a formula with respect to a whole Kripke model, we translate from pairs of Kripke models and worlds to $\mathcal{KL}$-models, rather than just from Kripke models to $\mathcal{KL}$-models. \\
-Thus, these are the types of our translation functions:
+In our implementation, to do justice to the the fact that translation functions can only sensibly be defined for \emph{some} Kripke models, and \emph{some} $\mathcal{KL}$ formulas, we use the \verb?Maybe? monad provided by Haskell. To do justice to the fact that evaluating in a $\mathcal{KL}$-model is more like evaluating a formula at a specific world in a Kripke model, than like evaluating a formula with respect to a whole Kripke model, we translate from pairs of Kripke models and worlds to $\mathcal{KL}$-models, rather than just from Kripke models to $\mathcal{KL}$-models. Thus, these are the types of our translation functions:
 \begin{enumerate}
 \item \begin{verbatim}
 translateFormToKr :: Formula -> Maybe ModForm
@@ -212,15 +207,15 @@ kripkeToKL :: KripkeModel WorldState -> WorldState -> Maybe Model
 \end{verbatim}
 \end{enumerate}
 
-What constraints do we want our translation functions to satisfy? We propose that reasonable translation functions should at least satisfy these constraints: for any $\mathcal{KL}$ model \verb?Model w e d?, any translatable $\mathcal{KL}$ formula \verb?f?, any translatable Kripke model \verb?KrM uni val rel?, and any modal formula \verb?g?,
+We propose that reasonable translation functions should at least satisfy the following constraints: for any $\mathcal{KL}$ model \verb?Model w e d?, any translatable $\mathcal{KL}$ formula \verb?f?, any translatable Kripke model \verb?KrM uni val rel?, and any modal formula \verb?g?,
 \begin{enumerate}
-\item Translating formulas back and forth shouldn't change them:
+\item \emph{Translating formulas back and forth shouldn't change them:}
   \begin{itemize}
   \item \verb?translateFormToKL (fromJust (translateFormToKr f)) = f?
   \item \verb?fromJust (translateFormToKr (translateFormToKL g)) = g?
   \end{itemize}
 
-\item Truth values should be preserved by the translations:
+\item \emph{Truth values should be preserved by the translations:}
   \begin{itemize}
   \item \verb?Model w e d |= f? iff
   \newline
@@ -234,10 +229,7 @@ What constraints do we want our translation functions to satisfy? We propose tha
 
 We check that our translation formulas do indeed satisfy these constraint in the test suite (in \verb?TranslatorSpec.lhs?).
 
-% \textbf{Implementation}\\
-% Now we get to the implementation of our translation functions.
-
-\subsection{Translation Functions from $\mathcal{KL}$ to Kripke}
+\subsection{Translating from $\mathcal{KL}$ to Kripke}
 \textbf{Translation Functions for Formulas}\\
 As mentioned above, we translate from a fragment of the language of $\mathcal{KL}$ to the language of propositional modal logic. Specifically, only formulas whose atomic subformulas consist of the predicate letter "P", followed by exactly one standard name, are translated; in this case the function \verb?translateFormToKr? replaces all of the atomic subformulas by propositional variables.
 \vspace{10pt}
@@ -251,11 +243,11 @@ translateFormToKr _                              = Nothing
 \end{code}
 
 \textbf{Translation Functions for Models}\\
-\verb?translateModToKr? takes a $\mathcal{KL}$ model, and returns a Kripke model, where 
+The function \verb?translateModToKr? takes a $\mathcal{KL}$ model, and returns a Kripke model, where 
 \begin{itemize}
 \item the worlds are all the world states in the epistemic state of the $\mathcal{KL}$ model, plus the actual world state;
 \item for each world, the propositional variables true at it are the translations of the atomic formulas consisting of "P" followed by a standard name that are true at the world state;
-\item the worlds from within the epistemic state all see each other, and themselves and the actual world sees all other worlds.
+\item the worlds from within the epistemic state all see each other, and themselves; and the actual world sees all other worlds.
 \end{itemize}
 \vspace{10pt}
 \begin{code}
@@ -283,11 +275,11 @@ isActuallyAtomic _ = False
 \subsection{Translating from Propositional Modal Logic to $\mathcal{KL}$}
 
 \textbf{Translation Functions for Formulas}\\
-\verb?translateFormToKL? takes a formula of propositional modal logic and computes the translated $\mathcal{KL}$ formula. Since PML is a propositional logic, we will immitate this in the language of $\mathcal{KL}$ by translating it to a unique corresponding atomic formula in $\mathcal{KL}$.
+The function \verb?translateFormToKL? takes a formula of propositional modal logic and computes the translated $\mathcal{KL}$ formula. Since PML is a propositional logic, we will immitate this in the language of $\mathcal{KL}$ by translating it to a unique corresponding atomic formula in $\mathcal{KL}$.
 
 \vspace{10pt}
 \begin{code}
--- Translates an a formula of propositional modal logic to a KL formula (predicate logic with knowledge operator).
+-- Translates a formula of propositional modal logic to a KL formula (predicate logic with knowledge operator).
 translateFormToKL :: ModForm -> Formula
 translateFormToKL (P n) = Atom (Pred "P" [StdNameTerm (StdName ("n" ++ show n))])  -- Maps proposition P n to atom P(n), e.g., P 1 -> P(n1)
 translateFormToKL (Neg form) = Not (translateFormToKL form)                          -- Negation is preserved recursively
@@ -297,12 +289,11 @@ translateFormToKL (Box form) = K (translateFormToKL form)                       
 \end{code}
 
 \textbf{Translation Functions for Models}\\
-\verb?kripkeToKL? takes a Kripke model and a world in its universe
-and computes a corresponding $\mathcal{KL}$-model which is satisfiability equivalent with the given world in the given model.\\
+The function \verb?kripkeToKL? takes a Kripke model and a world in its universe, and computes a corresponding $\mathcal{KL}$-model which is satisfiability equivalent with the given world in the given model.\\
 
-\noindent $\mathcal{KL}$ models and Kripke Models can both be used to represent an agent's knowledge, but they do it in a very different way. A $\mathcal{KL}$ model $(e,w)$ is an ordered pair of a \textit{world state} $w$ , representing what is true in the real world, and an \textit{epistemic state} $e$, representing what the agent considers possible.\\
-In contrast, a Kripke model $\mathcal{M} = (W,R,V)$ consists of a universe $W$, an accessibility relation $R \subseteq W\times W$, and a valuation function $V: Prop \rightarrow \mathcal{P}(W)$ that assigns each propositional letter the set of worlds in which it is true.\\
-There are two key differences between $\mathcal{KL}$ models and Kripke Models. First, $\mathcal{KL}$ models have a fixed actual world and can only evaluate non-modal formulas at this particular world while Kripke Models can evaluate what is true at each of the worlds in their Universe. Second, the \textit{world states} in the \textit{epistemic state} of a $\mathcal{KL}$ model form an equivalence class in the sense that no matter how many nested \textit{K-Operators} there are in a formula, each level is evaluated on the whole epistemic state. Among others, this implies that positive introspection ($\mathbf{K}\varphi \rightarrow \mathbf{K}\mathbf{K}\varphi$) and negative introspection ($\neg\mathbf{K} \varphi \rightarrow \mathbf{K}\neg\mathbf{K}\varphi$) are valid in $\mathcal{KL}$. Informally, positive introspection says that if an agent knows \( \varphi \), then they know that they know \( \varphi \) and negative introspection says that if an agent does not know \( \varphi \), then they know that they do not know \( \varphi \). In Kripke models, however, this is not the case and the worlds accessible from each world do not always form an equivalence class under the accessibility relation $R$.\\
+\noindent $\mathcal{KL}$ models and Kripke Models can both be used to represent an agent's knowledge, but they do it in a very different way. A $\mathcal{KL}$ model $(e,w)$ is an ordered pair of a \textit{world state} $w$ , representing what is true in the real world, and an \textit{epistemic state} $e$, representing what the agent considers possible. By contrast, a Kripke model $\mathcal{M} = (W,R,V)$ consists of a universe $W$, an accessibility relation $R \subseteq W\times W$, and a valuation function $V: Prop \rightarrow \mathcal{P}(W)$ that assigns to each propositional letter the set of worlds in which it is true.\\
+
+There are two key differences between $\mathcal{KL}$ models and Kripke Models. First, $\mathcal{KL}$ models have a fixed actual world and can only evaluate non-modal formulas at this particular world while Kripke Models can evaluate what is true at each of the worlds in their Universe. Second, the \textit{world states} in the \textit{epistemic state} of a $\mathcal{KL}$ model form an equivalence class in the sense that no matter how many nested \textit{K-Operators} there are in a formula, each level is evaluated on the whole epistemic state. Among other things, this implies that positive introspection ($\mathbf{K}\varphi \rightarrow \mathbf{K}\mathbf{K}\varphi$) and negative introspection ($\neg\mathbf{K} \varphi \rightarrow \mathbf{K}\neg\mathbf{K}\varphi$) are valid in $\mathcal{KL}$. Informally, positive introspection says that if an agent knows \( \varphi \), then they know that they know \( \varphi \) and negative introspection says that if an agent does not know \( \varphi \), then they know that they do not know \( \varphi \). In Kripke models, however, this is not generally the case and the worlds accessible from each world do not always form an equivalence class under the accessibility relation $R$.\\
 \\
 We address the first difference by not translating the entire Kripke Model but by selecting an actual world in the Kripke model and then translating the submodel point generated at this world into a $\mathcal{KL}$ model. By design, the selected actual world is translated to the actual \textit{world state} and the set of worlds accessible from the selected world is translated to the \textit{epistemic state}. Further, we restrict the translation function to only translate the fragment of Kripke Models where the set of worlds accessible from each world in the universe form an equivalence class with respect to $R$.\\
 \\
@@ -310,14 +301,14 @@ This gives us a translation function \verb?kripkeToKL? of type\\ \verb?kripkeToK
 
 \textbf{Constraints on Translatable Kripke Models}\\
 To ensure that the set of worlds accessible from each world in the universe form an equivalence class with respect to $R$, we require the Kripke model to be transitive ($\forall u,v,w ((Ruv \wedge Rvw) \rightarrow Ruw)$) and euclidean ($\forall u,v,w ((Ruv \wedge Ruw) \rightarrow Rvw)$).\\
-For this, we implemented the following two functions that check whether a Kripke model is transitive and euclidean, respectively:
+For this, we implement the following two functions that check whether a Kripke model is transitive and euclidean, respectively:
 \vspace{10pt}
 \begin{code}
--- Checks if a Kripke model is Euclidean
+-- Checks whether a Kripke model is Euclidean
 isEuclidean :: (Eq a, Ord a) => KripkeModel a -> Bool
 isEuclidean = isValidKr (Dis (Box (Neg (P 1))) (Box (dia (P 1))))  -- \Box \neg P1 \lor \Box \Diamond P1 holds for Euclidean relations
 
--- Checks if a Kripke model is transitive
+-- Checks whether a Kripke model is transitive
 isTransitive :: (Eq a, Ord a) => KripkeModel a -> Bool
 isTransitive = isValidKr (Dis (Neg (Box (P 1))) (Box (Box (P 1))))  -- \neg \Box P1 \lor \Box \Box P1 holds for transitive relations
 
@@ -327,14 +318,14 @@ We further need the constraint that the world selected to be the actual world in
 
 \vspace{10pt}
 \begin{code}
--- Checks if a world is in the Kripke model’s universe
+-- Checks whether a world is in the Kripke model’s universe
 isInUniv :: WorldState -> [WorldState] -> Bool
 isInUniv = elem  -- Simple membership test
 
 \end{code}
 
 \textbf{Main Function to Translate Kripke Models}\\
-With this, we can now define the \verb?kripkeToKL? function that maps a Kripke Model of type \verb?KripkeModel WorldState? and a \verb?WorldState? to a \verb?Just? $\mathcal{KL}$? \verb?model? if the Kripke Model is transitive and euclidean and the selected world state is in the universe of the Kripke Model and to \verb?Nothing? otherwise.
+With this, we can now define the \verb?kripkeToKL? function that maps a Kripke Model of type \verb?KripkeModel WorldState? and a \verb?WorldState? to a \verb?Just? $\mathcal{KL}$? \verb?Model? if the Kripke Model is transitive and euclidean and the selected world state is in the universe of the Kripke Model and to \verb?Nothing? otherwise.
 
 \vspace{10pt}
 \begin{code}
