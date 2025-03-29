@@ -177,7 +177,7 @@ transEucClosure rela
     closure = nub $ rela ++ [(a,c) | (a,b) <- rela, (b',c) <- rela, b == b'] ++ [(b,c) | (a,b) <- rela, (a',c) <- rela, a == a']
 
 -- Generator, which, given a KripkeModel, picks a world
-genWorldFrom :: (KripkeModel a) -> Gen (Translator.World a)
+genWorldFrom :: KripkeModel a -> Gen (Translator.World a)
 genWorldFrom m = elements (universe m)
 
 -- Generator for a pair consisting of a transitive, Euclidean model, and a world in that model

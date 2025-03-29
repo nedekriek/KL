@@ -86,8 +86,8 @@ newParams used = [StdName ("a" ++ show i) | i <- [(1::Int)..], StdName ("a" ++ s
 -- Applies tableau rules to a node on a branch
 applyRule :: Node -> Branch -> RuleResult
 applyRule (Node f w) branch = case f of
-  Atom g -> Open [Branch (nodes branch) (params branch) (keeps branch ++ [(Node (Atom g) w)])]   -- If formula is an atom: Do nothing; keep the formula in the branch.
-  Not (Atom g) -> Open [Branch (nodes branch) (params branch) (keeps branch ++ [(Node (Not (Atom g)) w)])]  -- Negated atoms remain, checked by isClosed
+  Atom g -> Open [Branch (nodes branch) (params branch) (keeps branch ++ [Node (Atom g) w])]   -- If formula is an atom: Do nothing; keep the formula in the branch.
+  Not (Atom g) -> Open [Branch (nodes branch) (params branch) (keeps branch ++ [Node (Not (Atom g)) w])]  -- Negated atoms remain, checked by isClosed
   Equal t1 t2 -> if t1 == t2 then Open [branch] else Closed -- Reflexive equality
   Not (Equal t1 t2) -> if t1 == t2 then Closed else Open [branch] -- Contradiction for t /= t
   Not (Not f') -> Open [Branch (Node f' w : nodes branch) (params branch) (keeps branch)] -- Case: double negation, e.g., replace $\neg \neg \varphi$ with $\varphi$
@@ -105,11 +105,11 @@ applyRule (Node f w) branch = case f of
 
 -- Expands formula K \varphi to a new world
 expandK :: Formula -> TabWorld -> Branch -> Branch
-expandK f _ branch = Branch (Node f (1) : nodes branch) (params branch) (keeps branch) --- Only world 1
+expandK f _ branch = Branch (Node f 1 : nodes branch) (params branch) (keeps branch) --- Only world 1
 
 -- Expands \not K \varphi to a new world
 expandKNot :: Formula -> TabWorld -> Branch -> Branch
-expandKNot f _ branch = Branch (Node (Not f) (2) : nodes branch) (params branch) (keeps branch) ---Only world 1
+expandKNot f _ branch = Branch (Node (Not f) 2 : nodes branch) (params branch) (keeps branch) ---Only world 1
 --TODO : Explain this. 
 \end{code}
 
