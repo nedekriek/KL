@@ -19,9 +19,13 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 
-import Test.QuickCheck
 
 \end{code}
+\hide{
+\begin{code}
+import Test.QuickCheck
+\end{code}
+}
 
 \textbf{Worlds and Epistemic States}\\
 A \verb?WorldState? represents a single possible world in $\mathcal{KL}$, mapping truth values to primitive atoms and standard names to primitive terms. We have implemented it as mapping to atoms and terms instead of just primitive ones, as we make sure when creating a \verb?WorldState? to only use primitive atoms and primitive terms (by the function \verb?mkWorldState?).
