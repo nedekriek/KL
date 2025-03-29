@@ -4,9 +4,11 @@
 
 module Generators where
 
+import Tableau (Node)
 import SyntaxKL (Term(..), Atom(..), Formula(..), StdName)
 import SemanticsKL
 import Translator
+
 
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -63,6 +65,9 @@ genStdNameSet = sized $ \n -> do
   let m = min n 5
   size <- choose (0, m)
   Set.fromList <$> vectorOf size arbitrary
+
+generateListOfNodes :: IO [Node]
+generateListOfNodes = generate $ listOf arbitrary
 
 -- Helper Generator for atoms of the form 'P(standardname)'
 genPAtom :: Gen Atom
@@ -172,7 +177,7 @@ transEucClosure rela
     closure = nub $ rela ++ [(a,c) | (a,b) <- rela, (b',c) <- rela, b == b'] ++ [(b,c) | (a,b) <- rela, (a',c) <- rela, a == a']
 
 -- Generator, which, given a KripkeModel, picks a world
-genWorldFrom :: (KripkeModel a) -> Gen (World a)
+genWorldFrom :: KripkeModel a -> Gen (Translator.World a)
 genWorldFrom m = elements (universe m)
 
 -- Generator for a pair consisting of a transitive, Euclidean model, and a world in that model
@@ -189,3 +194,4 @@ genNonEmptyEpistemicState = do
 
 \end{code}
 }
+

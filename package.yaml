@@ -24,6 +24,8 @@ default-extensions:
   
 library:
   source-dirs: lib
+  dependecies:
+    - test
 
 tests:
   all-tests:
