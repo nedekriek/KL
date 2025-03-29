@@ -51,7 +51,7 @@ con f g = Neg (Dis (Neg f) (Neg g))
 impl :: ModForm -> ModForm -> ModForm
 impl f = Dis (Neg f)
 \end{code}
-\hide{\begin{code}
+\begin{code}
 -- this will be useful for testing later
 instance Arbitrary ModForm where
   arbitrary = resize 16 (sized randomForm) where
@@ -61,7 +61,7 @@ instance Arbitrary ModForm where
                          , Dis <$> randomForm (n `div` 2)
                                 <*> randomForm (n `div` 2)
                          , Box <$> randomForm (n `div` 2) ]
-\end{code}}
+\end{code}
 
 \textbf{Semantics}
 
