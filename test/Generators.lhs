@@ -166,4 +166,10 @@ genTransEucKripkeWithWorld = do
   w <- genWorldFrom m
   return (m, w)
 
+genNonEmptyEpistemicState :: Gen (Set WorldState)
+genNonEmptyEpistemicState = do
+    ws <- listOf1 arbitrary  -- `listOf1` ensures at least one WorldState
+    return (Set.fromList ws)
+
+
 \end{code}
