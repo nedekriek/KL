@@ -71,7 +71,9 @@ allWorldStates atoms terms dom = do
    return $ mkWorldState (zip atoms atomVals) (zip terms termVals)
 
 initial :: [PrimitiveAtom] -> [PrimitiveTerm] -> [StdName] -> EpistemicState
-initial atoms terms dom = Set.fromList (allWorldStates atoms terms dom)
+initial atoms terms dom 
+    | null atoms && null terms = Set.empty
+    | otherwise = Set.fromList (allWorldStates atoms terms dom)
 
 
 \end{code}
