@@ -4,7 +4,7 @@
 
 ### Prerequisites 
 
-You should have stack installed (see \url{https://haskellstack.org/}).
+You should have stack installed [see the Haskell Stack docs](https://haskellstack.org/).
 
 ### How to use this?
 
@@ -84,7 +84,10 @@ For models, create a KL model with `let m = model1` and convert it to a Kripke m
     ```bash
     stack clean && stack test --coverage
     ```
-
+- To run a subset of tests based of the description:
+    ```bash
+    stack test --test-arguments="--match <description>"
+    ```
 
 # Extensive documentation 
 

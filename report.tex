@@ -40,21 +40,17 @@ The semantics for this logic evaluates formulae on world states and epistemic st
 
 \input{lib/Tableau.lhs}
 
-\subsection{Tests}
-You can run all the tests and examine the current code coverage run \verb|stack clean && stack test --coverage|.
 
 % importing tests
+\input{test/Spec.lhs}
 \input{test/Generators.lhs}
-\input{test/AskTellSpec.lhs}
 \input{test/SemanticsKLSpec.lhs}
-\input{test/TableauSpec.lhs}
+\input{test/AskTellSpec.lhs}
 \input{test/TranslatorSpec.lhs}
+\input{test/TableauSpec.lhs}
 
-%\input{Conclusion.tex}
 
 \addcontentsline{toc}{section}{Bibliography}
-% \bibliographystyle{alpha}
-
 \printbibliography
 
 \end{document}

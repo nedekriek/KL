@@ -1,4 +1,4 @@
-\vspace{10pt}
+\hide{
 \begin{code}
 module AskTellSpec where
 
@@ -59,7 +59,7 @@ spec = describe "ask - Example Tests" $ do
                                 forAll genStdNameSet $ \d' ->  -- d' can be any set
                                 forAll genNonEmptyEpistemicState $ \e ->  -- Ensure e is non-empty
                                         ask (d' :: Set StdName) (e :: Set WorldState) taut2 `shouldBe` True
-        -- TELL 
+
         describe "tell - Example Tests" $ do
                 let atom1 = Pred "P1" []
                     atom2 = Pred "P2" []
@@ -75,10 +75,15 @@ spec = describe "ask - Example Tests" $ do
                 it "tell returns different epistemic state when formula is not known" $ do
                         (tell d e' g /= e') `shouldBe` True
                -- tell vs tellModel
+
                 it "tell == tellModel  when formula is known" $ do
                         (tell d' e' f' == epistemicState (tellModel m f') ) `shouldBe` True
                 it "tell == tellModel  when formula is not known" $ do
                         (tell d' e' g == epistemicState (tellModel m g)) `shouldBe` True
+
+\end{code}
+}
+\begin{code}       
         describe "tell - Property Tests" $ do
                 let f' = Atom (Pred "P1" [])
                 it "tell shouldnt restrict the epistemic state for the tautology P(x) -> ~~ P(x)" $ do
@@ -86,7 +91,9 @@ spec = describe "ask - Example Tests" $ do
                         property $ \e -> 
                             forAll genStdNameSet $ \d' -> 
                                 tell  (d' :: Set StdName) (e :: Set WorldState) taut1 `shouldBe` e
-                
+\end{code}
+\hide{
+\begin{code}
         -- Initial 
         describe "initial - Example Tests" $ do
                 let patoms_empt = []
@@ -106,4 +113,4 @@ spec = describe "ask - Example Tests" $ do
 
              
 \end{code}
-
+}
