@@ -75,14 +75,15 @@ spec = describe "ask - Example Tests" $ do
                 it "tell returns different epistemic state when formula is not known" $ do
                         (tell d e' g /= e') `shouldBe` True
                -- tell vs tellModel
-\end{code}
-}
-\begin{code}
+
                 it "tell == tellModel  when formula is known" $ do
                         (tell d' e' f' == epistemicState (tellModel m f') ) `shouldBe` True
                 it "tell == tellModel  when formula is not known" $ do
                         (tell d' e' g == epistemicState (tellModel m g)) `shouldBe` True
-        
+
+\end{code}
+}
+\begin{code}       
         describe "tell - Property Tests" $ do
                 let f' = Atom (Pred "P1" [])
                 it "tell shouldnt restrict the epistemic state for the tautology P(x) -> ~~ P(x)" $ do
