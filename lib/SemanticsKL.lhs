@@ -165,7 +165,7 @@ data Model = Model
   { actualWorld :: WorldState      -- The actual world state
   , epistemicState :: EpistemicState -- Set of possible world states
   , domain :: Set StdName          -- Domain of standard names
-  } deriving (Show)
+  } deriving (Show, Eq)
 
 --TODO hide
 instance Arbitrary Model where 
