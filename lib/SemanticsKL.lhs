@@ -9,7 +9,7 @@ The semantics are implemented in the \verb?SemanticsKL? module, which imports sy
 
 \vspace{10pt}
 \begin{code}
-{-# LANGUAGE InstanceSigs #-}
+
 
 module SemanticsKL where
 

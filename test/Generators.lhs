@@ -1,6 +1,6 @@
-\vspace{10pt}
+\hide{
 \begin{code}
-{-# LANGUAGE InstanceSigs #-}
+
 
 module Generators where
 
@@ -14,6 +14,7 @@ import Data.List
 import qualified Data.Map as Map
 import Test.QuickCheck
 \end{code}
+}
 
 This file contains helper generators, used only in testing. 
 s

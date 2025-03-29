@@ -6,7 +6,7 @@ The syntax of the language $\mathcal{KL}$ is described in \textcite{Lokb} and wa
 The \verb?SyntaxKL? module establishes the foundation for $\mathcal{KL}$'s syntax, defining the alphabet and grammar used in subsequent semantic evaluation.
 \vspace{10pt}
 \begin{code}
-{-# LANGUAGE InstanceSigs #-}
+
 module SyntaxKL where
 import Test.QuickCheck
 \end{code}
