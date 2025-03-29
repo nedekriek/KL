@@ -7,7 +7,6 @@ import Data.Maybe
 import GHC.Num
 import Test.QuickCheck
 import qualified Data.Map as Map
-import Data.Set (Set)
 import qualified Data.Set as Set
 import Control.Monad (replicateM)
 
