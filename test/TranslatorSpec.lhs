@@ -100,11 +100,11 @@ spec =  describe "translateFormToKr" $ do
             it "translating SEL to KL, and then back, shouldn't change anything" $ do
                 property $ \g -> g == fromJust (translateFormToKr (translateFormToKL g))
 
-        describe "combined" $ do
+        describe "integration tests language and model translation" $ do
             it "if a translatable formula is true in a KL model, its translation should be true at the corresponding Kripke model and world, and vice versa" $ do
                 property $ forAll (do
-                    m <- arbitrary
-                    f <- genTransFormula
+                    m <- resize 6 arbitrary
+                    f <- resize 6 genTransFormula
                     return (m, f)
                     ) $ \(Model w e d, f) -> (Model w e d `satisfiesModel` f) <==> ((translateModToKr (Model w e d), w) `makesTrue` fromJust (translateFormToKr f))
                     
