@@ -10,20 +10,22 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 
 
-import Translator hiding (dia, smallModels, areEquivalent, testTruthPres)
+import Translator hiding (dia)
 import SyntaxKL
 import SemanticsKL
 
 import Generators
 
+-- We will use the following repeatedly, and therefore define them globally.
+n1, n2, n3, n4 :: StdName
+n1 = StdName "n1" 
+n2 = StdName "n2" 
+n3 = StdName "n3" 
+n4 = StdName "n4" 
 
 spec :: Spec
 spec =  describe "translateFormToKr" $ do
-        let n1 = StdName "n1" 
-            n2 = StdName "n2" 
-            n3 = StdName "n3" 
-            n4 = StdName "n4" 
-            formula1 = Atom (Pred "P" [StdNameTerm n1])
+        let formula1 = Atom (Pred "P" [StdNameTerm n1])
             formula2 = K (Atom (Pred "P" [StdNameTerm n1]))
             formula3 = Not (K (Atom (Pred "P" [StdNameTerm n1])))
             trFormula1 = P 1
@@ -44,12 +46,7 @@ spec =  describe "translateFormToKr" $ do
             isNothing (translateFormToKr formula5) `shouldBe` True
 
         describe "translateModToKr" $ do
-            let n1 = StdName "n1" 
-                n2 = StdName "n2" 
-                n3 = StdName "n3" 
-                n4 = StdName "n4" 
-
-                -- a model where the actual world is part of the epistemic state
+            let -- a model where the actual world is part of the epistemic state
                 w1, w2, w3, w4 :: WorldState
                 w1 = mkWorldState [ (PPred "P" [n1], True) ] []
                 w2 = mkWorldState [ (PPred "P" [n2], True)
@@ -75,24 +72,6 @@ spec =  describe "translateFormToKr" $ do
                                 | world == w3 = [4]
                                 | otherwise   = []
                     rel = [(v, v') | v <- uni, v' <- uni]
-
-                -- a model where the actual world is NOT part of the epistemic state
-                e2 :: EpistemicState
-                e2 = Set.fromList [w2, w3, w4]
-
-                model2 :: Model
-                model2 = Model w1 e2 domain1
-
-                -- if all goes well, this should be converted to the following KripkeModel
-                kripkeM2 :: KripkeModel WorldState
-                kripkeM2 = KrM uni val rel where
-                    uni = [w1, w2, w3, w4]
-                    val world   | world == w1 = [1]
-                                | world == w2 = [2, 3]
-                                | world == w3 = [4]
-                                | otherwise   = []
-                    rel = [(v, v') | v <- es, v' <- es] ++ [(w1, v) | v <- es] where
-                        es = [w2, w3, w4]
 
                 -- a model that contains non-atomic formulas
                 w2' :: WorldState
@@ -142,12 +121,10 @@ spec =  describe "translateFormToKr" $ do
                 modelAllP1 = KrM [ww1, ww2] trueAtomicPropsAt [(ww1, ww1), (ww1, ww2), (ww2, ww1), (ww2, ww2)]
                 modelSomeP1 = KrM [ww1, mkWorldState [] []] trueAtomicPropsAt [(ww1, ww1)]
 
-                w1, w2, w3, w4 :: WorldState
+                w1, w2 :: WorldState
                 w1 = mkWorldState [ (PPred "P" [n1], True) ] []
                 w2 = mkWorldState [ (PPred "P" [n2], True)
                     , (PPred "P" [n3], True) ] []
-                w3 = mkWorldState [ (PPred "P" [n4], True) ] []
-                w4 = mkWorldState [] []
 
             it "returns true when P 1 is true in every world" $ do
                 trueEverywhere modelAllP1 (P 1) `shouldBe` True
@@ -242,9 +219,9 @@ spec =  describe "translateFormToKr" $ do
                         ws2 = makeWorldState m
                     return $ ws1 /= ws2
 
-        describe "Show IntKripkeModel" $ do
-            let intModel = KrM [0, 1] (\w -> if w == 0 then [1] else [2]) [(0, 1)]
-            it "shows IntKripkeModel in expected format" $ do
+        describe "Show KripkeModel Integer" $ do
+            let intModel = KrM [0::Integer, 1] (\w -> if w == 0 then [1] else [2]) [(0, 1)]
+            it "shows KripkeModel Integer in expected format" $ do
                 show intModel `shouldBe` "KrM\n[0,1]\n[(0,[1]),(1,[2])]\n[(0,1)]"
 
             it "consistently formats universe, valuation, and relation (property)" $
@@ -253,14 +230,14 @@ spec =  describe "translateFormToKr" $ do
                     let expected = "KrM\n" ++ show univ ++ "\n" ++ show [(x, val x) | x <- univ] ++ "\n" ++ show rel
                     return $ show intKr == expected
 
-        describe "Show KripkeModel" $ do
+        describe "Show KripkeModel WorldState" $ do
             let krModel = KrM [makeWorldState 0, makeWorldState 1] 
                             (\w -> if w == makeWorldState 0 then [1] else [2]) 
                             [(makeWorldState 0, makeWorldState 1)]
-            it "shows KripkeModel via KripkeModel Integer conversion" $ do
+            it "shows KripkeModel WorldState via KripkeModel Integer conversion" $ do
                 show (translateKrToKrInt krModel) `shouldBe` "KrM\n[0,1]\n[(0,[1]),(1,[2])]\n[(0,1)]"
 
-            it "translating worldstatemodels to kripke models and back show the same model" $
+            it "translating KripkeModel Integer to KripkeModel WorldState and back show the same model" $
                 property $ do
                 show (convertToWorldStateModel (translateKrToKrInt krModel)) `shouldBe` "KrM\n[WorldState {atomValues = fromList [(Pred \"WorldID\" [StdNameTerm (StdName \"0\")],True)], termValues = fromList []},WorldState {atomValues = fromList [(Pred \"WorldID\" [StdNameTerm (StdName \"1\")],True)], termValues = fromList []}]\n[(WorldState {atomValues = fromList [(Pred \"WorldID\" [StdNameTerm (StdName \"0\")],True)], termValues = fromList []},[1]),(WorldState {atomValues = fromList [(Pred \"WorldID\" [StdNameTerm (StdName \"1\")],True)], termValues = fromList []},[2])]\n[(WorldState {atomValues = fromList [(Pred \"WorldID\" [StdNameTerm (StdName \"0\")],True)], termValues = fromList []},WorldState {atomValues = fromList [(Pred \"WorldID\" [StdNameTerm (StdName \"1\")],True)], termValues = fromList []})]"
 
@@ -421,7 +398,7 @@ spec =  describe "translateFormToKr" $ do
                 checkModel modelKL7b ref `shouldBe` True
             
             it "always creates an empty domain" $ do
-                 (domain (fromJust (kripkeToKL exampleModel3 (makeWorldState 30)))) `shouldBe` Set.empty
+                 domain (fromJust (kripkeToKL exampleModel3 (makeWorldState 30))) `shouldBe` Set.empty
 
 areEquivalent :: (Eq a, Ord a) => [KripkeModel a] -> ModForm -> ModForm -> Bool
 areEquivalent models f1 f2 = 

@@ -151,10 +151,10 @@ genIntKripkeModel = do
   return $ KrM univ val rel
 
 transEucClosure :: Eq a => [(a,a)] -> [(a,a)]
-transEucClosure relation
-    | relation == closure   = relation
+transEucClosure rela
+    | rela == closure   = rela
     | otherwise             = transEucClosure closure where
-    closure = nub $ relation ++ [(a,c) | (a,b) <- relation, (b',c) <- relation, b == b'] ++ [(b,c) | (a,b) <- relation, (a',c) <- relation, a == a']
+    closure = nub $ rela ++ [(a,c) | (a,b) <- rela, (b',c) <- rela, b == b'] ++ [(b,c) | (a,b) <- rela, (a',c) <- rela, a == a']
 
 -- Generator, which, given a KripkeModel, picks a world
 genWorldFrom :: (KripkeModel a) -> Gen (World a)
@@ -166,5 +166,11 @@ genTransEucKripkeWithWorld = do
   m <- genSmallTransEucKripke
   w <- genWorldFrom m
   return (m, w)
+
+genNonEmptyEpistemicState :: Gen (Set WorldState)
+genNonEmptyEpistemicState = do
+    ws <- listOf1 arbitrary  -- `listOf1` ensures at least one WorldState
+    return (Set.fromList ws)
+
 
 \end{code}
