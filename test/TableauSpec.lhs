@@ -13,11 +13,6 @@ import qualified Data.Set as Set
 import Test.QuickCheck
 --import Control.Exception (evaluate)
 
-
-instance Arbitrary RuleResult where
-    arbitrary = oneof [ return Closed
-                      , Open <$> resize 5 (listOf arbitrary) ] -- Limit to 0-5 branches
-
 spec :: Spec
 spec = do
     describe "Tableau Eq Instances" $ do

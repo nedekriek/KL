@@ -72,6 +72,10 @@ The rules are applied iteratively to unexpanded nodes until all branches are eit
 -- Result of applying a tableau rule
 data RuleResult = Closed | Open [Branch] deriving (Eq, Show)
 
+instance Arbitrary RuleResult where
+    arbitrary = oneof [ return Closed
+                      , Open <$> resize 5 (listOf arbitrary) ] -- Limit to 0-5 branches
+
 -- Generates fresh parameters not in the used set
 newParams :: Set StdName -> [StdName]
 newParams used = [StdName ("a" ++ show i) | i <- [(1::Int)..], StdName ("a" ++ show i) `Set.notMember` used]
@@ -98,11 +102,11 @@ applyRule (Node f w) branch = case f of
 
 -- Expands formula K \varphi to a new world
 expandK :: Formula -> World -> Branch -> Branch
-expandK f w branch = Branch (Node f (1) : nodes branch) (params branch) (keeps branch) --- Only world 1
+expandK f _ branch = Branch (Node f (1) : nodes branch) (params branch) (keeps branch) --- Only world 1
 
 -- Expands \not K \varphi to a new world
 expandKNot :: Formula -> World -> Branch -> Branch
-expandKNot f w branch = Branch (Node (Not f) (2) : nodes branch) (params branch) (keeps branch) ---Only world 1
+expandKNot f _ branch = Branch (Node (Not f) (2) : nodes branch) (params branch) (keeps branch) ---Only world 1
 --TODO : Explain this. 
 \end{code}
 
@@ -128,8 +132,6 @@ isClosed b =
               ++ [((t1, t2), w, False) | Node (Not (Equal t1 t2)) w <- nodes b]  --- nodes or keeps?
       keepers = [(a, w, True) | Node (Atom a) w <- keeps b]
               ++ [(a, w, False) | Node (Not (Atom a)) w <- keeps b]
-      eqContra = any (\((t1, t2), w1, b1) -> any (\((t3, t4), w2, b2) -> 
-                    t1 == t3 && t2 == t4 && w1 == w2 && b1 /= b2) equals) equals
       keepContraActual = any (\(a1, w1, b1) -> any (\(a2, w2, b2) -> 
                     a1 == a2 && w1 == 0 && w2 == 0 && b1 /= b2) keepers) keepers
       keepContraModal = any (\(a1, w1, b1) -> any (\(a2, w2, b2) -> 
@@ -162,15 +164,17 @@ expandTableau branches
           expandable = filter (not . null . nodes) openBranches
       in if null expandable
          then Just openBranches
-         else let (branch:rest) = expandable
-                  ruleResult = applyRule (head (nodes branch)) (Branch (tail (nodes branch)) (params branch) (keeps branch))
-              in case ruleResult of
-                   Closed -> expandTableau rest
-                   Open newBranches -> case expandTableau rest of
-                       Nothing -> expandTableau newBranches
-                       Just restBranches -> case expandTableau newBranches of
-                           Nothing -> Just restBranches
-                           Just newBs -> Just (newBs ++ restBranches)
+         else case expandable of
+             (branch:rest) ->
+                 let ruleResult = applyRule (head (nodes branch)) (Branch (tail (nodes branch)) (params branch) (keeps branch))
+                 in case ruleResult of
+                      Closed -> expandTableau rest
+                      Open newBranches -> case expandTableau rest of
+                          Nothing -> expandTableau newBranches
+                          Just restBranches -> case expandTableau newBranches of
+                              Nothing -> Just restBranches
+                              Just newBs -> Just (newBs ++ restBranches)
+             [] -> Nothing -- This case should never occur due to the earlier null check
 \end{code}
 
 \textbf{Top-Level Checkers}\\
