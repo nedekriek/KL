@@ -4,7 +4,7 @@
 module Generators where
 
 import SyntaxKL
-
+import Tableau
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Test.QuickCheck
@@ -51,4 +51,22 @@ genStdNameSet = sized $ \n -> do
   let m = min n 5
   size <- choose (0, m)
   Set.fromList <$> vectorOf size arbitrary
+
+generateListOfNodes :: IO [Node]
+generateListOfNodes = generate $ listOf arbitrary
+
+{-}
+instance Arbitrary Node where
+    arbitrary = do
+        f <- genGroundFormula
+        w <- choose (0, 5) :: Gen Int
+        return $ Node f w
+
+instance Arbitrary Branch where
+    arbitrary = do
+        ns <- resize 5 (listOf arbitrary) :: Gen [Node] -- Limit to 0-5 nodes
+        ps <- genStdNameSet
+        ks <- resize 5 (listOf arbitrary) :: Gen [Node] -- Generate a list of Nodes for keeps
+        return $ Branch ns ps ks
+-}
 \end{code}

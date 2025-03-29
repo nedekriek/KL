@@ -13,18 +13,6 @@ import qualified Data.Set as Set
 import Test.QuickCheck
 --import Control.Exception (evaluate)
 
--- Arbitrary instances for QuickCheck
-instance Arbitrary Node where
-    arbitrary = do
-        f <- genGroundFormula
-        w <- choose (0, 5) :: Gen Int
-        return $ Node f w
-
-instance Arbitrary Branch where
-    arbitrary = do
-        ns <- resize 5 (listOf arbitrary) :: Gen [Node] -- Limit to 0-5 nodes
-        ps <- genStdNameSet
-        return $ Branch ns ps
 
 instance Arbitrary RuleResult where
     arbitrary = oneof [ return Closed
@@ -36,7 +24,7 @@ spec = do
         it "Node Eq is derived" $
             property $ \f w -> Node (f :: Formula) (w :: World) == Node f w
         it "Branch Eq is derived" $
-            property $ \ns ps -> Branch (ns :: [Node]) (ps :: Set.Set StdName) == Branch ns ps
+            property $ \ns ps ks -> Branch (ns :: [Node]) (ps :: Set.Set StdName) (ks :: [Node]) == Branch ns ps ks
         it "RuleResult Eq is derived" $
             property $ \r -> (r :: RuleResult) == r
 
@@ -53,19 +41,19 @@ spec = do
     describe "applyRule" $ do
         it "applyRule keeps atoms unchanged" $
             property $ forAll genGroundAtom $ \a -> do
-                let branch = Branch [] Set.empty
+                let branch = Branch [] Set.empty []
                     node = Node (Atom a) 0
-                applyRule node branch `shouldBe` Open [branch]
+                applyRule node branch `shouldBe` Open [Branch (nodes branch) (params branch) (keeps branch ++ [node]) ]
         it "applyRule splits Or into two branches" $
             property $ forAll genGroundFormula $ \f1 -> forAll genGroundFormula $ \f2 -> do
-                let branch = Branch [] Set.empty
+                let branch = Branch [] Set.empty []
                     node = Node (Or f1 f2) 0
-                    expected = Open [ Branch [Node f1 0] Set.empty
-                                    , Branch [Node f2 0] Set.empty ]
+                    expected = Open [ Branch [Node f1 0] Set.empty []
+                                    , Branch [Node f2 0] Set.empty []]
                 applyRule node branch `shouldBe` expected
         it "applyRule handles Exists with a fresh parameter" $
             property $ \x f -> do
-                let branch = Branch [] Set.empty
+                let branch = Branch [] Set.empty []
                     node = Node (Exists (Var x) f) 0
                 case applyRule node branch of
                     Open [newBranch] -> do
@@ -79,37 +67,37 @@ spec = do
                     _ -> fail "Expected Open with one branch"
         it "applyRule expands K to a new world" $
             property $ forAll genGroundFormula $ \f -> do
-                let branch = Branch [] Set.empty
+                let branch = Branch [] Set.empty []
                     node = Node (K f) 0
-                    expected = Open [Branch [Node f 1] Set.empty]
+                    expected = Open [Branch [Node f 1] Set.empty []]
                 applyRule node branch `shouldBe` expected
 
     describe "isClosed" $ do
         it "isClosed detects atomic contradictions in the same world" $
             property $ forAll genGroundAtom $ \a -> do
-                let branch = Branch [Node (Atom a) 0, Node (Not (Atom a)) 0] Set.empty
+                let branch = Branch [Node (Atom a) 0, Node (Not (Atom a)) 0] Set.empty []
                 isClosed branch `shouldBe` True
         it "isClosed allows consistent atoms in the same world" $
             property $ forAll genGroundAtom $ \a -> forAll genGroundAtom $ \b -> a /= b ==> do
-                let branch = Branch [Node (Atom a) 0, Node (Atom b) 0] Set.empty
+                let branch = Branch [Node (Atom a) 0, Node (Atom b) 0] Set.empty []
                 isClosed branch `shouldBe` False
         it "isClosed allows contradictions across different worlds" $
             property $ forAll genGroundAtom $ \a -> do
-                let branch = Branch [Node (Atom a) 0, Node (Not (Atom a)) 1] Set.empty
+                let branch = Branch [Node (Atom a) 0, Node (Not (Atom a)) 1] Set.empty []
                 isClosed branch `shouldBe` False
         it "isClosed detects equality contradictions" $
             let t = StdNameTerm (StdName "n1")
-                branch = Branch [Node (Equal t t) 0, Node (Not (Equal t t)) 0] Set.empty
+                branch = Branch [Node (Equal t t) 0, Node (Not (Equal t t)) 0] Set.empty []
             in isClosed branch `shouldBe` True
 
     describe "expandTableau" $ do
         it "expandTableau closes contradictory branches" $
             property $ forAll genGroundAtom $ \a -> do
-                let initBranch = Branch [Node (Atom a) 0, Node (Not (Atom a)) 0] Set.empty
+                let initBranch = Branch [Node (Atom a) 0, Node (Not (Atom a)) 0] Set.empty []
                 expandTableau [initBranch] `shouldBe` Nothing
         it "expandTableau keeps satisfiable branches open" $
             property $ forAll genGroundAtom $ \a -> do
-                let initBranch = Branch [Node (Or (Atom a) (Not (Atom a))) 0] Set.empty
+                let initBranch = Branch [Node (Or (Atom a) (Not (Atom a))) 0] Set.empty []
                 case expandTableau [initBranch] of
                     Just branches -> length branches `shouldBe` 2
                     Nothing -> fail "Expected satisfiable formula to yield open branches"
@@ -132,6 +120,10 @@ spec = do
                 property $ forAll genGroundAtom $ \a -> do
                     let f = Not (Or (Not (Atom a)) (Not (Not (Atom a))))
                     isSatisfiable f `shouldBe` False
+            it "isSatisfiable returns False for P & ~P 2" $
+                property $ forAll genGroundAtom $ \a -> do
+                    let f = Not (Or (Atom a) (Not (Atom a)))
+                    isSatisfiable f `shouldBe` False
             it "isSatisfiable returns False for t /= t" $
                 property $ forAll genGroundTerm $ \t -> do
                     isSatisfiable (Not (Equal t t)) `shouldBe` False
@@ -149,6 +141,10 @@ spec = do
                 property $ forAll genGroundAtom $ \a -> do
                     let f = Or (Not (K (Atom a))) (K (K (Atom a)))
                     isValid f `shouldBe` True
+            it "isValid returns False for K(~ K(P)) -> K(K(P))" $
+                property $ forAll genGroundAtom $ \a -> do
+                    let f = Not (Or (Not (K (Not (K (Atom a))))) (K (K (Atom a))))
+                    isValid f `shouldBe` False
         context "isValid on non-valid formulas" $ do
             it "isValid returns False for P" $
                 property $ forAll genGroundAtom $ \a -> do
