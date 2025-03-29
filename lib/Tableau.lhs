@@ -13,7 +13,7 @@ import SyntaxKL
 import SemanticsKL
 import Data.Set (Set)
 import qualified Data.Set as Set
-
+import Debug.Trace (trace)
 \end{code}
 
 \textbf{Tableau Approach}\\
@@ -98,6 +98,7 @@ This function reflects the semantic requirement that a world state w in an epist
 -- Branch closure with function symbols
 isClosed :: Branch -> Bool
 isClosed b =
+  trace ("Checking branch: " ++ show b) $
   let atoms = [(a, w, True) | Node (Atom a) w <- nodes b]
              ++ [(a, w, False) | Node (Not (Atom a)) w <- nodes b]
       equals = [((t1, t2), w, True) | Node (Equal t1 t2) w <- nodes b]
@@ -105,7 +106,8 @@ isClosed b =
       atomContra = any (\(a1, w1, b1) -> any (\(a2, w2, b2) -> a1 == a2 && w1 == w2 && b1 /= b2) atoms) atoms
       eqContra = any (\((t1, t2), w1, b1) -> any (\((t3, t4), w2, b2) -> 
                    t1 == t3 && t2 == t4 && w1 == w2 && b1 /= b2) equals) equals
-  in atomContra || eqContra  -- True if any contradiction exists
+  in trace ("Atom contradictions: " ++ show atomContra ++ ", Equality contradictions: " ++ show eqContra) $
+     atomContra || eqContra  -- True if any contradiction exists
 \end{code}
 
 \textbf{Tableau Expansion}\\
@@ -115,23 +117,25 @@ It returns Just branches if at least one branch is fully expanded and open, and 
 This function uses recursion. It continues until either all branches are closed or some are fully expanded
 \begin{code}
 expandTableau :: [Branch] -> Maybe [Branch]
-expandTableau branches
-  | null branches = Nothing
-  | all isClosed branches = Nothing
-  | otherwise =
-      let openBranches = filter (not . isClosed) branches
-          expandable = filter (not . null . nodes) openBranches
-      in if null expandable
-         then Just openBranches
-         else let (branch:rest) = expandable
-                  ruleResult = applyRule (head (nodes branch)) (Branch (tail (nodes branch)) (params branch))
-              in case ruleResult of
-                   Closed -> expandTableau rest
-                   Open newBranches -> case expandTableau rest of
-                       Nothing -> expandTableau newBranches
-                       Just restBranches -> case expandTableau newBranches of
-                           Nothing -> Just restBranches
-                           Just newBs -> Just (newBs ++ restBranches)
+expandTableau branches =
+  trace ("expandTableau called with branches: " ++ show branches) $
+  if null branches then Nothing
+  else if all isClosed branches then Nothing
+  else
+    let openBranches = filter (not . isClosed) branches
+        expandable = filter (not . null . nodes) openBranches
+    in if null expandable
+       then Just openBranches
+       else let (branch:rest) = expandable
+                ruleResult = applyRule (head (nodes branch)) (Branch (tail (nodes branch)) (params branch))
+            in case ruleResult of
+                 Closed -> expandTableau rest
+                 Open newBranches -> case expandTableau rest of
+                     Nothing -> expandTableau newBranches
+                     Just restBranches -> case expandTableau newBranches of
+                         Nothing -> Just restBranches
+                         Just newBs -> Just (newBs ++ restBranches)
+  
 \end{code}
 
 \textbf{Top-Level Checkers}\\
@@ -161,5 +165,10 @@ isValid f = not (isSatisfiable (Not f))
 \end{code}
 
 
-
-
+\\\\
+HERE 4 HELP
+\\\\
+ghci> import qualified Data.Set as Set
+ghci> ex = Pred "Q" []
+ghci> taut = Not (Or (Not (Atom ex)) (Not (Not (Atom ex))))
+ghci> expandTableau [Branch [Node taut 0] Set.empty]
