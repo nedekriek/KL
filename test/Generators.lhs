@@ -1,3 +1,4 @@
+\vspace{10pt}
 \begin{code}
 {-# LANGUAGE InstanceSigs #-}
 
@@ -16,6 +17,7 @@ import Test.QuickCheck
 
 This file contains helper generators, used only in testing. 
 s
+\vspace{10pt}
 \begin{code}
 -- Generator for arbitrary upper case letter
 genUpper :: Gen String

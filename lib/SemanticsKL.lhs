@@ -7,6 +7,7 @@ It is designed to model knowledge and uncertainty, as detailed in \textcite{Lokb
 Formulas of $\mathcal{KL}$ are evaluated in world states: consistent valuations of atoms and terms, while epistemic states capture multiple possible worlds, reflecting epistemic possibilities.\\
 The semantics are implemented in the \verb?SemanticsKL? module, which imports syntactic definitions from \verb?SyntaxKL? and uses Haskell's \verb?Data.Map? and \verb?Data.Set? for efficient and consistent mappings.
 
+\vspace{10pt}
 \begin{code}
 {-# LANGUAGE InstanceSigs #-}
 
@@ -26,6 +27,7 @@ import Test.QuickCheck
 A \verb?WorldState? represents a single possible world in $\mathcal{KL}$, mapping truth values to primitive atoms and standard names to primitive terms. We have implemented it as mapping to atoms and terms instead of just primitive ones, as we make sure when creating a \verb?WorldState? to only use primitive atoms and primitive terms (by the function \verb?mkWorldState?).
 An \verb?EpistemicState?, defined as a set of \verb?WorldState?s, models the set of worlds an agent considers possible, enabling the evaluation of the $\mathbf{K}$ operator.
 
+\vspace{10pt}
 \begin{code}
 -- A single world state with valuations for atoms and terms
 data WorldState = WorldState
@@ -49,6 +51,7 @@ To be able to use primitive terms and atoms in other functions just as we would 
 We then use the function \verb?checkDups? to ensure that there are no contradictions in the world state (e.g., P(n1) mapped to both \verb?True? and \verb?False?), thus reinforcing the single-valuation principle (\cite{Lokb}, p. 24).
 The function \verb?mkWorldState? then constructs maps for efficient lookup.
 
+\vspace{10pt}
 \begin{code}
 -- Constructs a WorldState from primitive atoms and primitive terms
 mkWorldState :: [(PrimitiveAtom, Bool)] -> [(PrimitiveTerm, StdName)] -> WorldState
@@ -74,6 +77,7 @@ Since we have decided to change the constructors of data of type \verb?Primitive
 This way, we can, if needed, check whether a given \verb?Term? or \verb?Atom? is primitive and then change the constructors appropriately.
 
 
+\vspace{10pt}
 \begin{code}
 -- Checks if a term is primitive (contains only standard names)
 isPrimitiveTerm :: Term -> Bool
@@ -100,6 +104,7 @@ The function uses pattern matching to handle the three possible forms of \verb?T
     \item \texttt{FuncAppTerm f args}: Recursively evaluates \texttt{args} to \texttt{StdName}s, builds a ground \texttt{FuncAppTerm}, and looks up its value in \texttt{termValues w}, erroring if undefined.
 \end{itemize}
 
+\vspace{10pt}
 \begin{code}
 -- Evaluates a ground term to its standard name in a WorldState
 evalTerm :: WorldState -> Term -> StdName
@@ -118,6 +123,7 @@ evalTerm w t = case t of
 To support formula evaluation, \verb?isGround? and \verb?isGroundFormula? check for the absence of variables, while \verb?substTerm? and \verb?subst? perform substitution of variables with standard names, respecting quantifier scope to avoid a capture.
 We need these functions to be able to define a function that checks whether a formula is true in a \verb?WorldState? and \verb?EpistemicState?.
 
+\vspace{10pt}
 \begin{code}
 -- Check if a term is ground (contains no variables).
 isGround :: Term -> Bool
@@ -159,6 +165,7 @@ subst x n formula = case formula of
 
 \textbf{Truth in a Model}\\
 Since we want to be able check if a formula is true in a model, we want to make the model explicit:
+\vspace{10pt}
 \begin{code}
 -- Represents a model with an actual world, epistemic state, and domain
 data Model = Model
@@ -176,6 +183,7 @@ instance Arbitrary Model where
 A \verb?Model? encapsulates an actual world, an epistemic state, and a domain, enabling the evaluation of formulas with the $\mathbf{K}$-operator. 
 The function \verb?satisfiesModel? implements $\mathcal{KL}$'s satisfaction relation, checking truth across worlds.
 
+\vspace{10pt}
 \begin{code}
 -- Checks if a formula is true in a model
 satisfiesModel :: Model -> Formula -> Bool
@@ -198,6 +206,7 @@ satisfiesModel (Model _ e d) (K f) = all (\w' -> satisfiesModel (Model w' e d) f
 Building on this we can implement a function \verb?checkModel? that checks whether a formula holds in a given model.
 \verb?checkModel? ensures a formula holds by grounding it with all possible substitutions of free variables, using \verb?groundFormula? and \verb?freeVars? to identify and replace free variables systematically.
 
+\vspace{10pt}
 \begin{code}
 -- Checks if a formula holds in a model by grounding it
 checkModel :: Model -> Formula -> Bool
@@ -209,6 +218,7 @@ Since we have implemented \verb?satisfiesModel? such that it assumes ground form
 Alternatives would be to throw an error or always substitute the same standard name. The implementation that we have chosen is more flexible and allows for more varied usage, however it is computationally expensive. We still decided to handle free variables in this way, as this implementation is the most faithful to the theory as described in \textcite{Lokb}.
 We implement \verb?groundFormula? as follows:
 
+\vspace{10pt}
 \begin{code}
 -- Generates all ground instances of a formula
 groundFormula :: Formula -> Set StdName -> [Formula]
@@ -241,6 +251,7 @@ If the Boolean \verb?includeBound? is \verb?True?, \verb?variables? returns all 
 If \verb?includeBound? is \verb?False?, it returns only free variables, excluding those bound by quantifiers.
 This way, we can use the function to support both \verb?freeVars? (free variables only) and \verb?allVariables? (all variables).
 
+\vspace{10pt}
 \begin{code}
 -- Collects variables in a formula, with a flag to include bound variables
 variables :: Bool -> Formula -> Set Variable

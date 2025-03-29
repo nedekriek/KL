@@ -6,6 +6,7 @@ This subsection implements satisfiability and validity checkers for  $\mathcal{K
 In $\mathcal{KL}$, this requires handling both first-order logic constructs (quantifiers, predicates) and the epistemic operator $\mathbf{K}$, which requires tracking possible worlds.
 Note that the full first-order epistemic logic with infinite domains is in general undecidable (\cite{Lokb} p. 173), so we adopt a semi-decision procedure: it terminates with "satisfiable" if an open branch is found but may loop infinitely for unsatisfiable cases due to the infinite domain $\mathcal{N}$.
 The \verb?Tableau? module builds on \verb?SyntaxKL? and \verb?SemanticsKL?:
+\vspace{10pt}
 \begin{code}
 module Tableau where
 
@@ -30,6 +31,7 @@ For $\mathcal{KL}$ we have to handle two things:
 \end{itemize}
 
 First, we define new types for the tableau node and branch: A \verb?Node? pairs formulas with world identifiers, and a \verb?Branch? tracks nodes and used parameters.
+\vspace{10pt}
 \begin{code}
 -- A tableau node: formula labeled with a world
 data Node = Node Formula World deriving (Eq, Show)
@@ -44,6 +46,7 @@ data Branch = Branch { nodes :: [Node], params :: Set StdName } deriving (Show)
 Rules decompose formulas, producing either a closed branch (contradictory) or open branches (consistent). 
 \verb?applyRule? implements these rules, handling logical and epistemic operators.
 The rules are applied iteratively to unexpanded nodes until all branches are either closed or fully expanded (open).
+\vspace{10pt}
 \begin{code}
 -- Result of applying a tableau rule
 data RuleResult = Closed | Open [Branch] deriving (Show)
@@ -93,6 +96,7 @@ In a subsequent step, we check for equality contradictions.
 The result of the function is \verb?atomContra || eqContra?: this is \verb?True? if either type of contradiction is found and \verb?False? otherwise.
 This function reflects the semantic requirement that a world state $w$ in an epistemic state $e$ can not assign both \verb?True? and \verb?False? to the same ground atom or equality
 
+\vspace{10pt}
 \begin{code}
 -- Branch closure with function symbols
 isClosed :: Branch -> Bool
@@ -112,6 +116,7 @@ Next, we have the function \verb?expandTableau?.
 It iteratively applies tableau rules to expand all branches, determining if any remain open (indicating satisfiability). 
 It returns \verb?Just branches? if at least one branch is fully expanded and open, and \verb?Nothing? if all branches close.
 This function uses recursion. It continues until either all branches are closed or some are fully expanded.
+\vspace{10pt}
 \begin{code}
 -- Expands the tableau, returning open branches if satisfiable
 expandTableau :: [Branch] -> Maybe [Branch]
@@ -135,6 +140,7 @@ It starts the tableau process and interprets the result.
 This function gets a \verb?Formula f? as an input and then creates a single branch with \verb?Node f 0? (formula \verb?f? in world \verb?0?) and an empty set of parameters. Next, it calls \verb?expandTablaeu? on this initial branch.
 It then interprets the result: if \verb?expandTableau? returns \verb?Just? $\mathunderscore$, this means, that at least one open branch exists, thus, the formula is satisfiable. 
 If \verb?expandTableau? returns \verb?Nothing?, this means that all branches are closed and the formula is unsatisfiable.
+\vspace{10pt}
 \begin{code}
 -- Tests if a formula is satisfiable
 isSatisfiable :: Formula -> Bool
@@ -147,6 +153,7 @@ The three functions \verb?isSatisfiable?, \verb?expandTableau?, and \verb?isClos
 Then, \verb?expandTableau? recursively applies \verb?applyRule? to decompose formulas, creating new branches as needed (e.g., for $\lor$, $\exists$).
 In a next step, \verb?isClosed? checks each branch for contradictions, guiding \verb?expandTableau? to prune closed branches or halt with an open one.
 
+\vspace{10pt}
 \begin{code}
 -- Tests if a formula is valid
 isValid :: Formula -> Bool

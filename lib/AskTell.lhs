@@ -2,6 +2,7 @@
 
 To use $\mathcal{KL}$ to interact with a knowledge base, \textcite{Lokb} defines two operators on epistemic states: $\emph{ask}$ and $\emph{tell}$. Informally, $\emph{ask}$ is used to determine if a sentence is known to a knowledge base, whereas $\emph{tell}$ is used to add a sentence to the knowledge base. Since epistemic states are sets of possible worlds, the more known sentences there are, the smaller the set of possible worlds. For this purpose, an $\emph{initial}$ epistemic state is also defined to contain all possible worlds given a finite set of atoms and terms.
 
+\vspace{10pt}
 \begin{code}
 module AskTell (ask,askModel, tell, tellModel, initial) where
 
@@ -20,6 +21,7 @@ $$
 
 When implementing $\emph{ask}$ in Haskell, we must take into account that a domain is implied by "$\models$" so that we can evaluate sentences with quantifiers. As such, we will take a domain as our first argument.
 
+\vspace{10pt}
 \begin{code}
 -- ask (Definition 5.2.1)
 ask :: Set.Set StdName -> EpistemicState -> Formula -> Bool
@@ -31,6 +33,7 @@ ask d e alpha | Set.null e = False
 
 We can simplify this into an \verb?askModel? function that takes only a model and a formula as input.
 
+\vspace{10pt}
 \begin{code}
 askModel :: Model -> Formula -> Bool
 askModel m alpha |  Set.null (epistemicState m) = False
@@ -43,6 +46,7 @@ $$\emph{tell}[\varphi,e] = e \cap \{w \; | \; w \models \varphi \}$$
 
 Again, we run into the issue that "$\models$" requires a domain, and so a domain must be specified to evaluate sentences with quantifiers.
 
+\vspace{10pt}
 \begin{code}
 -- tell operation
 tell :: Set.Set StdName -> EpistemicState -> Formula -> EpistemicState
@@ -52,6 +56,7 @@ tell d e alpha = Set.filter filterfunc e where
 
 We can again simplify to a function \verb?tellModel?, that takes as input a model and formula and produces a model with a modified epistemic state.
 
+\vspace{10pt}
 \begin{code}
 tellModel :: Model -> Formula -> Model
 tellModel m alpha = Model {actualWorld = actualWorld m, epistemicState = Set.filter filterfunc  (epistemicState m), domain = domain m} where
@@ -61,6 +66,7 @@ tellModel m alpha = Model {actualWorld = actualWorld m, epistemicState = Set.fil
 
 In addition to $\emph{ask}$ and $\emph{tell}$, it is valuable to define an initial epistemic state. $\emph{initial}$ is the epistemic state before any $\emph{tell}$ operations. This state contains all possible world states as there is nothing known that eliminates any possible world.
 
+\vspace{10pt}
 \begin{code}
 -- initial operation
 -- Generate all possible world states for a finite set of atoms and terms

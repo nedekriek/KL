@@ -1,3 +1,4 @@
+\vspace{10pt}
 \begin{code}
 module SemanticsKLSpec where
 
@@ -17,6 +18,7 @@ import Generators  -- helper functions for testing
 The following tests are for the semantics of $\mathcal{KL}$, which are defined in the SemanticsKL module. The tests are written using the Hspec testing framework and QuickCheck for property-based testing. The tests cover the evaluation of terms, formulas, and models, as well as model checking function. The Generators file provides helper functions for generating implementing testing, but have been omitted for brevity.
 
 
+\vspace{10pt}
 \begin{code}
 spec :: Spec
 spec =  describe "evalTerm - Unit Tests" $ do
