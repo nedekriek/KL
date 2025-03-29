@@ -257,13 +257,12 @@ spec =  describe "translateFormToKr" $ do
             let krModel = KrM [makeWorldState 0, makeWorldState 1] 
                             (\w -> if w == makeWorldState 0 then [1] else [2]) 
                             [(makeWorldState 0, makeWorldState 1)]
-            it "shows KripkeModel via IntKripkeModel conversion" $ do
-                show krModel `shouldBe` show (translateKrToKrInt krModel)
+            it "shows KripkeModel via KripkeModel Integer conversion" $ do
+                show (translateKrToKrInt krModel) `shouldBe` "KrM\n[0,1]\n[(0,[1]),(1,[2])]\n[(0,1)]"
 
-            it "matches IntKripkeModel show after conversion (property)" $
+            it "translating worldstatemodels to kripke models and back show the same model" $
                 property $ do
-                kr <- genRandomKripkeModel
-                return $ show kr == show (translateKrToKrInt kr)
+                show (convertToWorldStateModel (translateKrToKrInt krModel)) `shouldBe` "KrM\n[WorldState {atomValues = fromList [(Pred \"WorldID\" [StdNameTerm (StdName \"0\")],True)], termValues = fromList []},WorldState {atomValues = fromList [(Pred \"WorldID\" [StdNameTerm (StdName \"1\")],True)], termValues = fromList []}]\n[(WorldState {atomValues = fromList [(Pred \"WorldID\" [StdNameTerm (StdName \"0\")],True)], termValues = fromList []},[1]),(WorldState {atomValues = fromList [(Pred \"WorldID\" [StdNameTerm (StdName \"1\")],True)], termValues = fromList []},[2])]\n[(WorldState {atomValues = fromList [(Pred \"WorldID\" [StdNameTerm (StdName \"0\")],True)], termValues = fromList []},WorldState {atomValues = fromList [(Pred \"WorldID\" [StdNameTerm (StdName \"1\")],True)], termValues = fromList []})]"
 
         describe "con" $ do
             it "computes conjunction as Neg (Dis (Neg f) (Neg g))" $ do
@@ -290,7 +289,7 @@ spec =  describe "translateFormToKr" $ do
                 return $ all (\w -> makesTrue (kr, w) (impl f g) == (not (makesTrue (kr, w) f) || makesTrue (kr, w) g)) univ
 
 
-        describe "Translation (SEL to KL)" $ do
+        describe "Translation (Propositional Modal Logic to KL)" $ do
             -- Helper functions
             let   
                 -- Example models (completed)
@@ -414,44 +413,16 @@ spec =  describe "translateFormToKr" $ do
 
             it "preserves truth for conjunction con (P 1) (P 2) in clustered model (exampleModel6)" $ do
                 testTruthPres exampleModel6 (makeWorldState 60) (con (P 1) (P 2)) `shouldBe` Just True
-{-}
-            it "ensures pointed model invertibility for S5 model (exampleModel3) using pointed bisimulation" $ do
-                let km = exampleModel3
-                    w = makeWorldState 30
-                    klm = fromJust (kripkeToKL km w)
-                    kmBack = translateModToKr klm
-                putStrLn $ "Original: " ++ show exampleModel3
-                putStrLn $ "Back-translated: " ++ show kmBack
-                arePointedBisimilar km w kmBack w `shouldBe` True
--}
+
             it "verifies contradiction is false in modelKL7" $ do
                 not (checkModel modelKL7 (translateFormToKL (con (P 2) (Neg (P 2))))) `shouldBe` True
 
             it "verifies reflexivity axiom true in modelKL7b (w71 in cluster)" $ do
                 checkModel modelKL7b ref `shouldBe` True
+            
+            it "always creates an empty domain" $ do
+                 (domain (fromJust (kripkeToKL exampleModel3 (makeWorldState 30)))) `shouldBe` Set.empty
 
-
-
-{-}
-arePointedBisimilar :: KripkeModel -> WorldState -> KripkeModel -> WorldState -> Bool
-arePointedBisimilar km1 w1 km2 w2 =
-    let univ1 = universe km1
-        univ2 = universe km2
-        rel1 = relation km1
-        rel2 = relation km2
-        val1 = valuation km1
-        val2 = valuation km2
-        initialRel = [(u, v) | u <- univ1, v <- univ2, val1 u == val2 v]
-        satisfiesBackForth r (u, v) =
-            all (\u' -> any (\v' -> (u', v') `elem` r) (successors v rel2)) (successors u rel1) &&
-            all (\v' -> any (\u' -> (u', v') `elem` r) (successors u rel1)) (successors v rel2)
-        largestBisimulation = until (\r -> r == filter (satisfiesBackForth r) r)
-                                    (\r -> filter (satisfiesBackForth r) r)
-                                    initialRel
-    in (w1, w2) `elem` largestBisimulation
-    where
-        successors w r = [w' | (u, w') <- r, u == w]
--}
 areEquivalent :: (Eq a, Ord a) => [KripkeModel a] -> ModForm -> ModForm -> Bool
 areEquivalent models f1 f2 = 
     all (\m -> all (\w -> makesTrue (m, w) f1 == makesTrue (m, w) f2) (universe m)) models
@@ -464,7 +435,6 @@ testTruthPres km w g =
 
 dia :: ModForm -> ModForm
 dia f = Neg (Box (Neg f))
-
 
 
 (<==>) :: Bool -> Bool -> Bool

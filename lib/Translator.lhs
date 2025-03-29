@@ -92,6 +92,43 @@ makesTrue (KrM u v r, w) (Box f)   = all (\w' -> makesTrue (KrM u v r,w') f) (r 
 --truth in a model
 trueEverywhere :: Eq a => KripkeModel a -> ModForm -> Bool
 trueEverywhere (KrM x y z) f = all (\w -> makesTrue (KrM x y z, w) f) x
+\end{code}
+We will also have to be able to check whether a formula is valid on the frame underlying a Kripke model. This is implemented as follows:
+\begin{code}
+-- Maps Propositional Modal Logic to a KL atom
+propToAtom :: Proposition -> Atom
+propToAtom n = Pred "P" [StdNameTerm (StdName ("n" ++ show n))]  -- e.g., 1 -> P(n1)
+
+-- Creates a KL WorldState from a list of propositional variables????
+createWorldState :: [Proposition] -> WorldState
+createWorldState props =
+  let atomVals = Map.fromList [(propToAtom p, True) | p <- props]  -- Maps each proposition to True
+      termVals = Map.empty                                          -- No term valuations needed here
+  in WorldState atomVals termVals
+
+-- extract all the propositional variables of a Propositional Modal Logic formula
+uniqueProps :: ModForm -> [Proposition]
+uniqueProps f = nub (propsIn f)
+  where
+    propsIn (P k)       = [k]
+    propsIn (Neg g)     = propsIn g
+    propsIn (Dis g h)   = propsIn g ++ propsIn h
+    propsIn (Box g)     = propsIn g
+
+-- Generate all possible valuations explicitly
+allValuations :: Ord a => [World a] -> [Proposition] -> [Valuation a]
+allValuations univ props = 
+  let subsetsP = subsequences props
+      allAssignments = replicateM (length univ) subsetsP
+  in [ \w -> Map.findWithDefault [] w (Map.fromList (zip univ assignment))
+     | assignment <- allAssignments ]
+
+-- Checks whether a Kripke formula is valid on a given Kripke model 
+isValidKr :: (Eq a, Ord a) => ModForm -> KripkeModel a -> Bool
+isValidKr f (KrM univ _ rel) = 
+  let props = uniqueProps f
+      valuations = allValuations univ props
+  in all (\v -> all (\w -> makesTrue (KrM univ v rel, w) f) univ) valuations
 
 \end{code}
 
@@ -234,7 +271,7 @@ isActuallyAtomic (Pred "P" [StdNameTerm (StdName _)]) = True
 isActuallyAtomic _ = False
 \end{code}
 
-\subsection{Translation functions from Kripke to $\mathcal{KL}$}
+\subsection{Translating from Propositional Modal Logic to $\mathcal{KL}$}
 
 \textbf{Translation functions for formulas}\\
 \verb?translateFormToKL? takes a formula of propositional modal logic and computes the translated $\mathcal{KL}$ formula. Since PML is a propositional logic, we will immitate this in the language of $\mathcal{KL}$ by translating it to a unique corresponding atomic formula in $\mathcal{KL}$.
@@ -253,75 +290,39 @@ translateFormToKL (Box form) = K (translateFormToKL form)                       
 \verb?kripkeToKL? takes a Kripke model and a world in its universe
 and computes a corresponding $\mathcal{KL}$-model which is satisfiability equivalent with the given world in the given model.\\
 
-\noindent $\mathcal{KL}$ models and Kripke models are frameworks used to represent an agent's knowledge in epistemic logic, but they differ in their structure and approach. A $\mathcal{KL}$ model explicitly separates:
-\begin{itemize}
-\item An \textit{actual world state}, representing what is true in the real world.
-\item A set of \textit{epistemic world states}, representing the worlds the agent considers possible based on their knowledge.
-\end{itemize}
-In contrast, a Kripke model consists of:
-\begin{itemize}
-\item A set of possible worlds;
-\item An accessibility relation between worlds, where an agent knows a proposition \( p \) at a world \( w \) if \( p \) is true in all worlds accessible from \( w \).
-\end{itemize}
-The task of translating a Kripke model into a $\mathcal{KL}$-model involves preserving both:
-\begin{enumerate}
-  \item \textit{What is true} in the actual world.
-  \item \textit{What the agent knows} in that world.
-\end{enumerate}
-To perform this translation, we take a Kripke model and a specified world \( w \) (designated as the actual world) and construct a $\mathcal{KL}$-model where:
-\begin{itemize}
-\item The \textit{actual world state} corresponds to \( w \).
-\item The \textit{epistemic state} consists of all worlds accessible from \( w \) in the Kripke model.
-\end{itemize}
-However, not all Kripke models can be straightforwardly translated into $\mathcal{KL}$-models while maintaining the semantics of knowledge as defined in $\mathcal{KL}$. In $\mathcal{KL}$, knowledge of a proposition \( p \) means that \( p \) is true in all world states within the epistemic state. 
-This imposes specific requirements on the structure of the Kripke model's accessibility relation to ensure compatibility with KL's properties of knowledge.\\
+\noindent $\mathcal{KL}$ models and Kripke Models can both be used to represent an agent's knowledge, but they do it in a very different way. A $\mathcal{KL}$ model $(e,w)$ is an ordered pair of a \textit{world state} $w$ , representing what is true in the real world, and an \textit{epistemic state} $e$, representing what the agent considers possible.\\
+In contrast, a Kripke model $\mathcal{M} = (W,R,V)$ consists of a universe $W$, an accessibility relation $R \subseteq W\times W$, and a valuation function $V: Prop \rightarrow \mathcal{P}(W)$ that assigns each propositional letter the set of worlds in which it is true.\\
+There are two key differences between $\mathcal{KL}$ models and Kripke Models. First, $\mathcal{KL}$ models have a fixed actual world and can only evaluate non-modal formulas at this particular world while Kripke Models can evaluate what is true at each of the worlds in their Universe. Second, the \textit{world states} in the \textit{epistemic state} of a $\mathcal{KL}$ model form an equivalence class in the sense that no matter how many nested \textit{K-Operators} there are in a formula, each level is evaluated on the whole epistemic state. Among others, this implies that positive introspection ($\mathbf{K}\varphi \rightarrow \mathbf{K}\mathbf{K}\varphi$) and negative introspection ($\neg\mathbf{K} \varphi \rightarrow \mathbf{K}\neg\mathbf{K}\varphi$) are valid in $\mathcal{KL}$. Informally, positive introspection says that if an agent knows \( \varphi \), then they know that they know \( \varphi \) and negative introspection says that if an agent does not know \( \varphi \), then they know that they do not know \( \varphi \). In Kripke models, however, this is not the case and the worlds accessible from each world do not always form an equivalence class under the accessibility relation $R$.\\
+\\
+We address the first difference by not translating the entire Kripke Model but by selecting an actual world in the Kripke model and then translating the submodel point generated at this world into a $\mathcal{KL}$ model. By design, the selected actual world is translated to the actual \textit{world state} and the set of worlds accessible from the selected world is translated to the \textit{epistemic state}. Further, we restrict the translation function to only translate the fragment of Kripke Models where the set of worlds accessible from each world in the universe form an equivalence class with respect to $R$.\\
+\\
+This gives us a translation function \verb?kripkeToKL? of type \verb?kripkeToKL :: KripkeModel WorldState -> WorldState -> Maybe Model?
+\\
+\textbf{Constraints on translatable Kripke Models}\\
+To ensure that the set of worlds accessible from each world in the universe form an equivalence class with respect to $R$, we require the Kripke model to be transitive ($\forall u,v,w ((Ruv \wedge Rvw) \rightarrow Ruw)$) and euclidean ($\forall u,v,w ((Ruv \wedge Ruw) \rightarrow Rvw)$).\\
+For this, we implemented the following two functions that check whether a Kripke model is transitive and euclidean, respectively:
+\begin{code}
+-- Checks if a Kripke model is Euclidean
+isEuclidean :: (Eq a, Ord a) => KripkeModel a -> Bool
+isEuclidean = isValidKr (Dis (Box (Neg (P 1))) (Box (dia (P 1))))  -- \Box \neg P1 \lor \Box \Diamond P1 holds for Euclidean relations
 
-\noindent \textbf{Restrictions on Kripke Models: Transitivity and Euclideanness}\\
+-- Checks if a Kripke model is transitive
+isTransitive :: (Eq a, Ord a) => KripkeModel a -> Bool
+isTransitive = isValidKr (Dis (Neg (Box (P 1))) (Box (Box (P 1))))  -- \neg \Box P1 \lor \Box \Box P1 holds for transitive relations
 
-In $\mathcal{KL}$, knowledge exhibits introspective properties, such as:
-\begin{itemize}
-\item \textit{Positive introspection}: If an agent knows \( p \), then they know that they know \( p \) (formally, \( Kp \rightarrow KKp \)).
-\item \textit{Negative introspection}: If an agent does not know \( p \), then they know that they do not know \( p \) (formally, \( \neg Kp \rightarrow K\neg Kp \)).
-\end{itemize}
-These properties imply that the epistemic state must be consistent and stable across all worlds the agent considers possible. 
-Specifically, for any proposition \( p \), the formula \( KKp \) (the agent knows that they know \( p \)) should hold if and only if \( Kp \) (the agent knows \( p \)) holds. 
-This equivalence requires the set of worlds in the epistemic state to have a uniform structure.\\
-To capture these introspective properties in a Kripke model, the accessibility relation must satisfy:
-\begin{itemize}
-  \item \textit{Transitivity}: If world \( w \) can access world \( v \) (i.e., \( w \rightarrow v \)), and \( v \) can access world \( u \) (i.e., \( v \rightarrow u \)), then \( w \) must access \( u \) (i.e., \( w \rightarrow u \)). 
-  This ensures that the agent's knowledge extends consistently across all accessible worlds, supporting positive introspection.
-  \item \textit{Euclideanness}: If \( w \rightarrow v \) and \( w \rightarrow u \), then \( v \rightarrow u \). 
-  This means that any two worlds accessible from \( w \) must be accessible to each other, which is necessary for negative introspection.
-\end{itemize}
-When a Kripke model's accessibility relation is both transitive and Euclidean, the set of worlds accessible from \( w \) forms an \textit{equivalence class}. 
-In an equivalence class, every world is accessible from every other world (including itself, implying reflexivity), and the set is fully connected, meaning the agent's knowledge is uniform across all worlds in the epistemic state.\\
-This fully connected structure aligns with the $\mathcal{KL}$ model's epistemic state, where a proposition is known only if it holds in all possible worlds the agent considers. 
-If the worlds accessible from \( w \) did not "see each other" (i.e., were not mutually accessible), introspective knowledge claims like \( KKp \leftrightarrow Kp \) could not be preserved, as the agent's knowledge would vary inconsistently across the accessible worlds.
+\end{code}
 
-\subsubsection*{The Actual World and the Possibility of Knowing Falsehoods}
+We further need the constraint that the world selected to be the actual world in the Kripke Model is in the universe of the given Kripke Model. This is ensured by the \verb?isInUniv? function.
 
-A key feature of $\mathcal{KL}$ models is that the agent can know something false. 
-This means that the actual world state (representing the true state of affairs) does not necessarily belong to the epistemic state (the worlds the agent considers possible). 
-For example, an agent might believe a false proposition, leading them to exclude the actual world from their epistemic state. In the translation from a Kripke model to a $\mathcal{KL}$  model, we designate \( w \) as the actual world state. The epistemic state includes only the worlds accessible from \( w \), which may or may not include \( w \) itself.\\
+\begin{code}
+-- Checks if a world is in the Kripke model’s universe
+isInUniv :: WorldState -> [WorldState] -> Bool
+isInUniv = elem  -- Simple membership test
 
-This flexibility distinguishes $\mathcal{KL}$  models from some traditional Kripke-based systems (e.g., S5, where the actual world is typically accessible due to reflexivity), allowing $\mathcal{KL}$ to model scenarios where an agent's knowledge deviates from reality.
+\end{code}
 
-\subsubsection*{Conditions for Translation}
-
-To successfully translate a Kripke model into a $\mathcal{KL}$ model, the accessibility relation must be \textit{transitive and Euclidean}, ensuring that the worlds accessible from \( w \) form an equivalence class. The translation process then sets the actual world state of the KL model to \( w \), and defines the epistemic state as the set of all worlds accessible from \( w \) in the Kripke model.\\
-
-If the Kripke model's accessibility relation is not transitive and Euclidean, the translation cannot preserve the introspective properties of knowledge required by $\mathcal{KL}$, and thus it fails. 
-In practice, this restriction is implemented in the function below, which takes a Kripke model and a world \( w \) as input, verifies that the accessibility relation satisfies transitivity and Euclideanness, and then returns a $\mathcal{KL}$ model if the conditions are met, or an indication of failure (e.g.,\verb?Nothing?) otherwise.
-
-\subsubsection*{Example and Intuition}
-
-Consider a Kripke model with worlds \( \{w, v, u\} \), where:
-\begin{itemize}
-  \item \( w \rightarrow v \) and \( w \rightarrow u \), but \( v \not\rightarrow u \) (not Euclidean).
-  \item At \( w \), the agent knows \( p \) if \( p \) is true in \( v \) and \( u \).
-\end{itemize}
-If \( p \) is true in \( v \) and \( u \), then \( \mathbf{K}p \) holds at \( w \). However, for \( \mathbf{K}\mathbf{K}p \) to hold, \( \mathbf{K}p \) must be true in both \( v \) and \( u \). If \( v \not\rightarrow u \), then \( \mathbf{K}p \) might not hold at \( v \) (since \( v \) does not access \( u \)), breaking the equivalence \( \mathbf{K}\mathbf{K}p \leftrightarrow \mathbf{K}p \). 
-In a $\mathcal{KL$} model, the epistemic state must ensure mutual accessibility to avoid such inconsistencies, which is why transitivity and Euclideanness are required.
+\textbf{The main function to translate Kripke Models}
+With this, we can now define the \verb?kripkeToKL? function that maps a Kripke Model of type \verb?KripkeModel WorldState? and a \verb?WorldState? to a \verb?Just? $\mathcal{KL}$? \verb?model? if the Kripke Model is transitive and euclidean and the selected world state is in the universe of the Kripke Model and to \verb?Nothing? otherwise.
 
 \begin{code}
 -- Main function: Convert Kripke model to KL model
@@ -338,52 +339,4 @@ kripkeToKL kr@(KrM univ val rel) w
     newEpistemicState = Set.fromList [createWorldState (val v) | v <- accessibleWorlds]
     -- Domain (empty for simplicity)
     newDomain = Set.empty
-
--- Maps an PML proposition to a KL atom
-propToAtom :: Proposition -> Atom
-propToAtom n = Pred "P" [StdNameTerm (StdName ("n" ++ show n))]  -- e.g., 1 -> P(n1)
-
--- Creates a KL WorldState from a list of propositions
-createWorldState :: [Proposition] -> WorldState
-createWorldState props =
-  let atomVals = Map.fromList [(propToAtom p, True) | p <- props]  -- Maps each proposition to True
-      termVals = Map.empty                                          -- No term valuations needed here
-  in WorldState atomVals termVals
-
--- Checks if a world is in the Kripke model’s universe
-isInUniv :: WorldState -> [WorldState] -> Bool
-isInUniv = elem  -- Simple membership test
-
--- Helper: functions as provided
-uniqueProps :: ModForm -> [Proposition]
-uniqueProps f = nub (propsIn f)
-  where
-    propsIn (P k)       = [k]
-    propsIn (Neg g)     = propsIn g
-    propsIn (Dis g h)   = propsIn g ++ propsIn h
-    propsIn (Box g)     = propsIn g
-
--- Generate all possible valuations explicitly
-allValuations :: Ord a => [World a] -> [Proposition] -> [Valuation a]
-allValuations univ props = 
-  let subsetsP = subsequences props
-      allAssignments = replicateM (length univ) subsetsP
-  in [ \w -> Map.findWithDefault [] w (Map.fromList (zip univ assignment))
-     | assignment <- allAssignments ]
-
--- Checks whether a Kripke formula is valid on a given Kripke model 
-isValidKr :: (Eq a, Ord a) => ModForm -> KripkeModel a -> Bool
-isValidKr f (KrM univ _ rel) = 
-  let props = uniqueProps f
-      valuations = allValuations univ props
-  in all (\v -> all (\w -> makesTrue (KrM univ v rel, w) f) univ) valuations
-
--- Checks if a Kripke model is Euclidean
-isEuclidean :: (Eq a, Ord a) => KripkeModel a -> Bool
-isEuclidean = isValidKr (Dis (Box (Neg (P 1))) (Box (dia (P 1))))
-  -- \Box \neg P1 \lor \Box \Diamond P1 holds for Euclidean relations
-
--- Checks if a Kripke model is transitive
-isTransitive :: (Eq a, Ord a) => KripkeModel a -> Bool
-isTransitive = isValidKr (Dis (Neg (Box (P 1))) (Box (Box (P 1))))  -- \neg \Box P1 \lor \Box \Box P1 holds for transitive relations
 \end{code}

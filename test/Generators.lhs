@@ -120,7 +120,7 @@ genTransEucKripke = sized randomModel where
       let r = transEucClosure r'
       return (KrM u v r)
 
--- Generator for arbitrary Kripke models
+-- Generator for arbitrary world state Kripke models
 genRandomKripkeModel :: Gen (KripkeModel WorldState)
 genRandomKripkeModel = sized randomModel where
     randomModel :: Int -> Gen (KripkeModel WorldState)
