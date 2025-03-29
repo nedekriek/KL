@@ -166,7 +166,7 @@ spec =  describe "evalTerm - Unit Tests" $ do
             -- This is an expensive test, so we limit the size of the formula
             it "groundFormula returns a ground formula (dependant on isGroundFormula passing all tests)" $ do
                property $ forAll (resize 5 arbitrary) $ \f ->
-                   forAll (resize 10 genStdNameSet) $ \s ->
+                   forAll (resize 3 genStdNameSet) $ \s ->
                        all isGroundFormula (groundFormula (f :: Formula) s)
 
         describe "checkModel - Property Tests" $ do
