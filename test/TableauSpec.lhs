@@ -18,7 +18,7 @@ spec :: Spec
 spec = do
     describe "Tableau Eq Instances" $ do
         it "Node Eq is derived" $
-            property $ \f w -> Node (f :: Formula) (w :: World) == Node f w
+            property $ \f w -> Node (f :: Formula) (w :: TabWorld) == Node f w
         it "Branch Eq is derived" $
             property $ \ns ps ks -> Branch (ns :: [Node]) (ps :: Set.Set StdName) (ks :: [Node]) == Branch ns ps ks
         it "RuleResult Eq is derived" $

@@ -37,7 +37,7 @@ First, we define new types for the tableau node and branch: A \verb?Node? pairs 
 \begin{code}
 
 -- A tableau node: formula labeled with a world
-data Node = Node Formula World deriving (Eq, Show)
+data Node = Node Formula TabWorld deriving (Eq, Show)
 
 -- Arbitrary instance for Node
 instance Arbitrary Node where
@@ -46,7 +46,7 @@ instance Arbitrary Node where
     world <- choose (0, 10) -- Example range for world identifiers
     return $ Node formula world
 
-type World = Int    -- World identifier (0, 1, ...)
+type TabWorld = Int    -- World identifier (0, 1, ...)
 
 -- A tableau branch: list of nodes and set of used parameters
 data Branch = Branch { nodes :: [Node],  params :: Set StdName, keeps :: [Node] } deriving (Eq, Show)
@@ -104,11 +104,11 @@ applyRule (Node f w) branch = case f of
   K f' -> Open [expandK f' w branch] -- Knowledge rule, add formula to a new world
 
 -- Expands formula K \varphi to a new world
-expandK :: Formula -> World -> Branch -> Branch
+expandK :: Formula -> TabWorld -> Branch -> Branch
 expandK f _ branch = Branch (Node f (1) : nodes branch) (params branch) (keeps branch) --- Only world 1
 
 -- Expands \not K \varphi to a new world
-expandKNot :: Formula -> World -> Branch -> Branch
+expandKNot :: Formula -> TabWorld -> Branch -> Branch
 expandKNot f _ branch = Branch (Node (Not f) (2) : nodes branch) (params branch) (keeps branch) ---Only world 1
 --TODO : Explain this. 
 \end{code}
