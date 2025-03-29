@@ -9,8 +9,6 @@ The semantics are implemented in the \verb?SemanticsKL? module, which imports sy
 
 \vspace{10pt}
 \begin{code}
-{-# LANGUAGE InstanceSigs #-}
-
 module SemanticsKL where
 
 import SyntaxKL 
@@ -18,10 +16,12 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-
-import Test.QuickCheck
-
 \end{code}
+\hide{
+\begin{code}
+import Test.QuickCheck
+\end{code}
+}
 
 \textbf{Worlds and Epistemic States}\\
 A \verb?WorldState? represents a single possible world in $\mathcal{KL}$, mapping truth values to primitive atoms and standard names to primitive terms. We have implemented it as mapping to atoms and terms instead of just primitive ones, as we make sure when creating a \verb?WorldState? to only use primitive atoms and primitive terms (by the function \verb?mkWorldState?).
@@ -35,15 +35,18 @@ data WorldState = WorldState
    termValues :: Map Term StdName   --Maps (primitive) terms to standard names
   }  deriving (Eq, Ord, Show)
 
---TODO: hide
+-- A set of possible world states, modeling epistemic possibilities
+type EpistemicState = Set WorldState
+\end{code}
+
+\hide{
+\begin{code}
 instance Arbitrary WorldState where
   arbitrary :: Gen WorldState
   arbitrary = WorldState <$> arbitrary <*> arbitrary
-
--- A set of possible world states, modeling epistemic possibilities
-type EpistemicState = Set WorldState
-
 \end{code}
+}
+
 \textbf{Constructing World States}\\
 We can construct world states by using \verb?mkWorldState?, which builds a \verb?WorldState? from lists of primitive atoms and terms. 
 While a \verb?WorldState? is defined in terms of \verb?Atom? and \verb?Term?, we use \verb?mkWorldState? to make sure that we can only have primitive atoms and primitive terms in the mapping.
@@ -77,7 +80,10 @@ Since we have decided to change the constructors of data of type \verb?Primitive
 This way, we can, if needed, check whether a given \verb?Term? or \verb?Atom? is primitive and then change the constructors appropriately.
 
 
-\vspace{10pt}
+\hide{ 
+  % currently not used but useful for understanding the 
+  % language so we keep it as pesuodo documentation
+  % and for future use
 \begin{code}
 -- Checks if a term is primitive (contains only standard names)
 isPrimitiveTerm :: Term -> Bool
@@ -94,6 +100,7 @@ isPrimitiveAtom (Pred _ args) = all isStdName args
         isStdName _ = False
 
 \end{code}
+}
 
 \textbf{Term Evaluation}\\
 To evaluate a ground term in a world state, we define a function \verb?evalTerm? that takes a \verb?WorldState? and a \verb?Term? and returns a \verb?StdName?. 
@@ -173,12 +180,15 @@ data Model = Model
   , epistemicState :: EpistemicState -- Set of possible world states
   , domain :: Set StdName          -- Domain of standard names
   } deriving (Show, Eq)
+\end{code}
 
---TODO hide
+\hide{
+\begin{code}
 instance Arbitrary Model where 
   arbitrary:: Gen Model 
   arbitrary = Model <$> arbitrary <*> arbitrary <*> arbitrary
 \end{code}
+}
 
 A \verb?Model? encapsulates an actual world, an epistemic state, and a domain, enabling the evaluation of formulas with the $\mathbf{K}$-operator. 
 The function \verb?satisfiesModel? implements $\mathcal{KL}$'s satisfaction relation, checking truth across worlds.

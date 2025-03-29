@@ -1,5 +1,5 @@
 \section{Comparing KL and Epistemic Logic}
-\vspace{10pt}
+\hide{
 \begin{code}
 module Translator where
 
@@ -15,8 +15,9 @@ import Control.Monad (replicateM)
 import SyntaxKL
 import SemanticsKL
 \end{code}
+}
 
-\subsection{Preliminaries}
+% \subsection{Preliminaries}
 We want to compare $\mathcal{KL}$ and Propositional Modal Logic based on Kripke frames. (Call this PML). For example, we might want to compare the complexity of model checking for $\mathcal{KL}$ and PML. To do this, we need some way of "translating" between formulas of $\mathcal{KL}$ and formulas of PML, and between $\mathcal{KL}$-models and Kripke models. This would allow us to, e.g., (1) take a set of $\mathcal{KL}$-formulas of various lengths and a set of $\mathcal{KL}$-models of various sizes; (2) translate both formulas and models into PML; (3) do model checking for both (i.e.. on the $\mathcal{KL}$ side, and on the PML side); (4) compare how time and memory scale with length of formula.\\
 \noindent Three things need to be borne in mind when designing the translation functions:
 \begin{enumerate}
@@ -228,11 +229,11 @@ To be useful for comparing between logics, we propose that translation functions
 
 We check that our translation formulas do indeed satisfy these constraint in the test suite (in \verb?TranslatorSpec.lhs?).
 
-\textbf{Implementation}\\
-Now we get to the implementation of our translation functions.
+% \textbf{Implementation}\\
+% Now we get to the implementation of our translation functions.
 
-\subsection{Translation functions from $\mathcal{KL}$ to Kripke}
-\textbf{Translation functions for formulas}\\
+\subsection{Translation Functions from $\mathcal{KL}$ to Kripke}
+\textbf{Translation Functions for Formulas}\\
 As mentioned above, we translate from a fragment of the language of $\mathcal{KL}$ to the language of propositional modal logic. Specifically, only formulas whose atomic subformulas consist of the predicate letter "P", followed by exactly one standard name, are translated; in this case the function \verb?translateFormToKr? replaces all of the atomic subformulas by propositional variables.
 \vspace{10pt}
 \begin{code}
@@ -244,7 +245,7 @@ translateFormToKr (K f)                          = Box <$> translateFormToKr f
 translateFormToKr _                              = Nothing
 \end{code}
 
-\textbf{Translation functions for models}\\
+\textbf{Translation Functions for Models}\\
 \verb?translateModToKr? takes a $\mathcal{KL}$ model, and returns a Kripke model, where 
 \begin{itemize}
 \item the worlds are all the world states in the epistemic state of the $\mathcal{KL}$ model, plus the actual world state;
@@ -276,7 +277,7 @@ isActuallyAtomic _ = False
 
 \subsection{Translating from Propositional Modal Logic to $\mathcal{KL}$}
 
-\textbf{Translation functions for formulas}\\
+\textbf{Translation Functions for Formulas}\\
 \verb?translateFormToKL? takes a formula of propositional modal logic and computes the translated $\mathcal{KL}$ formula. Since PML is a propositional logic, we will immitate this in the language of $\mathcal{KL}$ by translating it to a unique corresponding atomic formula in $\mathcal{KL}$.
 
 \vspace{10pt}
@@ -289,7 +290,7 @@ translateFormToKL (Dis form1 form2) = Or (translateFormToKL form1) (translateFor
 translateFormToKL (Box form) = K (translateFormToKL form)                            -- Box becomes K, representing knowledge
 \end{code}
 
-\textbf{Translation functions for models}\\
+\textbf{Translation Functions for Models}\\
 \verb?kripkeToKL? takes a Kripke model and a world in its universe
 and computes a corresponding $\mathcal{KL}$-model which is satisfiability equivalent with the given world in the given model.\\
 
@@ -299,9 +300,9 @@ There are two key differences between $\mathcal{KL}$ models and Kripke Models. F
 \\
 We address the first difference by not translating the entire Kripke Model but by selecting an actual world in the Kripke model and then translating the submodel point generated at this world into a $\mathcal{KL}$ model. By design, the selected actual world is translated to the actual \textit{world state} and the set of worlds accessible from the selected world is translated to the \textit{epistemic state}. Further, we restrict the translation function to only translate the fragment of Kripke Models where the set of worlds accessible from each world in the universe form an equivalence class with respect to $R$.\\
 \\
-This gives us a translation function \verb?kripkeToKL? of type \verb?kripkeToKL :: KripkeModel WorldState -> WorldState -> Maybe Model?
-\\
-\textbf{Constraints on translatable Kripke Models}\\
+This gives us a translation function \verb?kripkeToKL? of type\\ \verb?kripkeToKL :: KripkeModel WorldState -> WorldState -> Maybe Model? \\
+
+\textbf{Constraints on Translatable Kripke Models}\\
 To ensure that the set of worlds accessible from each world in the universe form an equivalence class with respect to $R$, we require the Kripke model to be transitive ($\forall u,v,w ((Ruv \wedge Rvw) \rightarrow Ruw)$) and euclidean ($\forall u,v,w ((Ruv \wedge Ruw) \rightarrow Rvw)$).\\
 For this, we implemented the following two functions that check whether a Kripke model is transitive and euclidean, respectively:
 \vspace{10pt}
@@ -324,7 +325,7 @@ isInUniv :: WorldState -> [WorldState] -> Bool
 isInUniv = elem  -- Simple membership test
 \end{code}
 
-\textbf{The main function to translate Kripke Models}
+\textbf{Main Function to Translate Kripke Models}\\
 With this, we can now define the \verb?kripkeToKL? function that maps a Kripke Model of type \verb?KripkeModel WorldState? and a \verb?WorldState? to a \verb?Just? $\mathcal{KL}$? \verb?model? if the Kripke Model is transitive and euclidean and the selected world state is in the universe of the Kripke Model and to \verb?Nothing? otherwise.
 
 \vspace{10pt}
