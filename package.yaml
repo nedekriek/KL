@@ -20,6 +20,7 @@ dependencies:
 
 default-extensions:
   - InstanceSigs
+  - NondecreasingIndentation
   
 library:
   source-dirs: lib

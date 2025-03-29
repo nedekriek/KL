@@ -21,7 +21,7 @@ The following tests are for the semantics of $\mathcal{KL}$, which are defined i
 \vspace{10pt}
 \begin{code}
 spec :: Spec
-spec =  describe "evalTerm - Unit Tests" $ do
+spec =  describe "evalTerm - Example Tests" $ do
         it "evalTerm returns the StdName after applying all functions (depth 2)" $ do
             let n1 = StdName "n1"
                 n2 = StdName "n2"
@@ -41,7 +41,7 @@ spec =  describe "evalTerm - Unit Tests" $ do
                 property $ \w n -> evalTerm w (StdNameTerm n) == n
 
 
-        describe "isGround - Unit Tests" $ do
+        describe "isGround - Example Tests" $ do
             it "isGround returns True for StdNameTerm" $ do
                 isGround (StdNameTerm $ StdName "n1") `shouldBe` True
             it "isGround returns False for VarTerm" $ do
@@ -53,7 +53,7 @@ spec =  describe "evalTerm - Unit Tests" $ do
                 isGround term `shouldBe` False
 
 
-        describe "isGroundFormula - Unit Tests" $ do
+        describe "isGroundFormula - Example Tests" $ do
             it "isGroundFormula returns False for Atom with a non-ground term" $ do
                 isGroundFormula (Atom (Pred "P" [VarTerm $ Var "x"])) `shouldBe` False
             it "isGroundFormula returns False for Equal with a non-ground term" $ do
@@ -67,7 +67,7 @@ spec =  describe "evalTerm - Unit Tests" $ do
                 property $ \n f -> not $ isGroundFormula (Exists (Var n) (f :: Formula))
 
 
-        describe "substTerm - Unit Tests" $ do
+        describe "substTerm - Example Tests" $ do
             it "substTerm replaces the variable with the StdName" $ do
                 let term = FuncAppTerm "f" [VarTerm $ Var "x", StdNameTerm $ StdName "n1"]
                 substTerm (Var "x") (StdName "n2") term `shouldBe` FuncAppTerm "f" [StdNameTerm $ StdName "n2", StdNameTerm $ StdName "n1"]
@@ -76,7 +76,7 @@ spec =  describe "evalTerm - Unit Tests" $ do
                 substTerm (Var "x") (StdName "n2") term `shouldBe` term
 
 
-        describe "subst - Unit Tests" $ do
+        describe "subst - Example Tests" $ do
             it "subst replaces the variable with the StdName in an Atom" $ do
                 let atom = Atom (Pred "P" [VarTerm $ Var "x"])
                 show (subst (Var "x") (StdName "n1") atom) `shouldBe` show (Atom (Pred "P" [StdNameTerm $ StdName "n1"]))
@@ -143,7 +143,7 @@ spec =  describe "evalTerm - Unit Tests" $ do
                     property $ \m -> satisfiesModel m (Exists x (Not (Equal (VarTerm x) (VarTerm x)))) `shouldBe` False
         
 
-        describe "freeVars - Unit Tests" $ do
+        describe "freeVars - Example Tests" $ do
             -- test fixtures
             let x = Var "x"
                 y = Var "y"
