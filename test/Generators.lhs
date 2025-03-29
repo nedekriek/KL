@@ -16,8 +16,7 @@ import Test.QuickCheck
 \end{code}
 }
 
-This file contains helper generators, used only in testing. 
-s
+\hide{
 \vspace{10pt}
 \begin{code}
 -- Generator for arbitrary upper case letter
@@ -28,7 +27,6 @@ genUpper = (:[]) <$> elements ['A'..'Z']
 genLower :: Gen String
 genLower = (:[]) <$> elements ['a'..'z']
 
--- Generator for ground terms
 genGroundTerm :: Gen Term
 genGroundTerm = sized genTerm
     where
@@ -36,11 +34,14 @@ genGroundTerm = sized genTerm
         genTerm n = oneof [StdNameTerm <$> arbitrary, 
                            FuncAppTerm <$> genLower <*> resize (n `div` 2) (listOf genGroundTerm)]
 
--- Generator for ground Atoms
 genGroundAtom :: Gen Atom
 genGroundAtom = Pred <$> genUpper<*> listOf genGroundTerm
+\end{code}
+}
 
--- Generator for ground formulas
+
+\vspace{10pt}
+\begin{code}
 genGroundFormula :: Gen Formula
 genGroundFormula = sized genFormula
     where
@@ -51,7 +52,11 @@ genGroundFormula = sized genFormula
                              , Or <$> genFormula (n `div` 2) <*> genFormula (n `div` 2)
                              , K <$> genFormula (n `div` 2)
                              ]
+\end{code}
 
+
+\hide{
+\begin{code}
 -- Generator for a set of StdName values
 genStdNameSet :: Gen (Set StdName)
 genStdNameSet = sized $ \n -> do
@@ -75,8 +80,10 @@ genTransFormula = sized genTrForm
                              , Or <$> genTrForm (n `div` 2) <*> genTrForm (n `div` 2)
                              , K <$> genTrForm (n `div` 2)
                              ]
+\end{code}
+}
 
-
+\begin{code}
 -- Generator for SEL-Formulae
 genModForm :: Gen ModForm
 genModForm = sized genFormula
@@ -90,7 +97,10 @@ genModForm = sized genFormula
                 <*> genFormula (n `div` 2))
       , (1, Box <$> genFormula (n `div` 2))       -- Box operator
       ]
+\end{code}
+\hide{
 
+\begin{code}
 -- Generator for WorldStates at which only propositions of the form 'P(standardname)' are true
 genTransWorldState ::Gen WorldState
 genTransWorldState = do
@@ -105,6 +115,9 @@ genTransWorldState = do
 genSmallTransEucKripke :: Gen (KripkeModel WorldState)
 genSmallTransEucKripke = resize 6 genTransEucKripke
 
+\end{code}
+}
+\begin{code}
 -- Generator for transitive and Euclidean Kripke models
 genTransEucKripke :: Gen (KripkeModel WorldState)
 genTransEucKripke = sized randomModel where
@@ -121,7 +134,9 @@ genTransEucKripke = sized randomModel where
           return (x,y)
       let r = transEucClosure r'
       return (KrM u v r)
-
+\end{code}
+\hide{
+\begin{code}
 -- Generator for arbitrary world state Kripke models
 genRandomKripkeModel :: Gen (KripkeModel WorldState)
 genRandomKripkeModel = sized randomModel where
@@ -172,5 +187,5 @@ genNonEmptyEpistemicState = do
     ws <- listOf1 arbitrary  -- `listOf1` ensures at least one WorldState
     return (Set.fromList ws)
 
-
 \end{code}
+}

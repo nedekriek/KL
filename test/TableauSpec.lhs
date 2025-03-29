@@ -1,4 +1,4 @@
-\vspace{10pt}
+\hide{
 \begin{code}
 module TableauSpec where
 
@@ -10,3 +10,4 @@ spec = describe "func_name1 - Specify collection of Unit/Property/Integration Te
             it "test description" $
                 True `shouldBe` True
 \end{code}
+}

@@ -1,4 +1,4 @@
-\vspace{10pt}
+\hide{
 \begin{code}
 module SemanticsKLSpec where
 
@@ -14,8 +14,7 @@ import SyntaxKL    -- types used in tests
 import Generators  -- helper functions for testing
 
 \end{code}
-
-The following tests are for the semantics of $\mathcal{KL}$, which are defined in the SemanticsKL module. The tests are written using the Hspec testing framework and QuickCheck for property-based testing. The tests cover the evaluation of terms, formulas, and models, as well as model checking function. The Generators file provides helper functions for generating implementing testing, but have been omitted for brevity.
+}
 
 
 \vspace{10pt}
@@ -39,8 +38,10 @@ spec =  describe "evalTerm - Example Tests" $ do
                 property $ \ w x -> evaluate (evalTerm w (VarTerm x)) `shouldThrow` anyException
             it "evalTerm returns the StdName for StdNameTerm" $ do
                 property $ \w n -> evalTerm w (StdNameTerm n) == n
+\end{code}
 
-
+\hide{
+\begin{code}
         describe "isGround - Example Tests" $ do
             it "isGround returns True for StdNameTerm" $ do
                 isGround (StdNameTerm $ StdName "n1") `shouldBe` True
@@ -101,7 +102,10 @@ spec =  describe "evalTerm - Example Tests" $ do
                 let formula = K (Atom (Pred "P" [VarTerm $ Var "x"]))
                 show (subst (Var "x") (StdName "n2") formula) `shouldBe` show (K (Atom (Pred "P" [StdNameTerm $ StdName "n2"])))
 
+\end{code}
+}
 
+\begin{code}
         describe "satisfiesModel - Property Tests" $ do
             -- test fixtures
             let x = Var "x"
@@ -118,6 +122,11 @@ spec =  describe "evalTerm - Example Tests" $ do
                     property $ \m -> satisfiesModel m (Or (Not pt) (Not (Not pt))) `shouldBe` True
                 it "satisfiesModel errors for P(x) -> ~~ P(x)" $ do
                     property $ \m -> evaluate (satisfiesModel m (Or (Not px) (Not (Not px)))) `shouldThrow` anyException
+
+\end{code}
+
+\hide{
+\begin{code}
                 it "satisfiesModel satisfies t=t" $ do
                     property $ \m -> satisfiesModel m (Equal n1 n1) `shouldBe` True
                 it "satisfiesModel errors for x=x" $ do
@@ -142,7 +151,6 @@ spec =  describe "evalTerm - Example Tests" $ do
                 it "satisfiesModel does not satisfy (Exists x (x /= x))" $ do
                     property $ \m -> satisfiesModel m (Exists x (Not (Equal (VarTerm x) (VarTerm x)))) `shouldBe` False
         
-
         describe "freeVars - Example Tests" $ do
             -- test fixtures
             let x = Var "x"
@@ -180,3 +188,4 @@ spec =  describe "evalTerm - Example Tests" $ do
                     property $ \m -> checkModel m (Equal (VarTerm x) (VarTerm x)) `shouldBe` True 
 
 \end{code}
+}

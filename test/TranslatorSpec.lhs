@@ -1,4 +1,4 @@
-\vspace{10pt}
+\hide{
 \begin{code}
 module TranslatorSpec where
 
@@ -416,3 +416,4 @@ dia f = Neg (Box (Neg f))
 (<==>) :: Bool -> Bool -> Bool
 (<==>) p q = (p && q) || (not p && not q)
 \end{code}
+}
