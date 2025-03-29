@@ -4,8 +4,7 @@
 
 module Generators where
 
-
-import Tableau
+import Tableau (Node)
 import SyntaxKL (Term(..), Atom(..), Formula(..), StdName)
 import SemanticsKL
 import Translator
