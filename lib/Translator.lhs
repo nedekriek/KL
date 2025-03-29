@@ -6,7 +6,7 @@ module Translator where
 import Data.List
 import Data.Maybe
 import GHC.Num
-import Test.QuickCheck
+import Test.QuickCheck()
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Control.Monad (replicateM)
@@ -28,10 +28,10 @@ We deal with the first two points by making some of the translation functions pa
 
 \subsection{Syntax and Semantics of PML}
 
-The syntax and semantics of PML is well-known: the language is just the language of basic modal logic, where the Box operator $\Box$ is interpreted as "It is known that...". Models are Kripke models. A mathematical description of all this can be found in any standard textbook on modal logic, so we focus on the implementation, here.\\
-\\
-\noindent \textbf{Implementation}\\
-\textbf{Syntax}\\
+The syntax and semantics of PML is well-known: the language is just the language of basic modal logic, where the Box operator $\Box$ is interpreted as "It is known that...". Models are Kripke models. A mathematical description of all this can be found in any standard textbook on modal logic, so we focus on the implementation, here.
+
+
+\textbf{Syntax}
 
 \vspace{10pt}
 \begin{code}
@@ -49,7 +49,8 @@ con f g = Neg (Dis (Neg f) (Neg g))
 
 impl :: ModForm -> ModForm -> ModForm
 impl f = Dis (Neg f)
-
+\end{code}
+\hide{\begin{code}
 -- this will be useful for testing later
 instance Arbitrary ModForm where
   arbitrary = resize 16 (sized randomForm) where
@@ -59,9 +60,9 @@ instance Arbitrary ModForm where
                          , Dis <$> randomForm (n `div` 2)
                                 <*> randomForm (n `div` 2)
                          , Box <$> randomForm (n `div` 2) ]
-\end{code}
+\end{code}}
 
-\underline{\textbf{Semantics}}
+\textbf{Semantics}
 
 For some parts of our project, it will be most convenient to let Kripke models have \verb?WorldState?s (as defined in \verb?SemanticsKL?) as worlds; for others, to have the worlds be \verb?Integer?s. We therefore implement Kripke models as a polymorphic data type, as follows: 
 
@@ -88,7 +89,7 @@ makesTrue (m,w)          (Neg f)   = not (makesTrue (m,w) f)
 makesTrue (m,w)          (Dis f g) = makesTrue (m,w) f || makesTrue (m,w) g
 makesTrue (KrM u v r, w) (Box f)   = all (\w' -> makesTrue (KrM u v r,w') f) (r ! w)
 
-(!) :: Eq a => Relation a -> World a -> [World a]
+(!) :: Eq a => Relation a -> World a -> [World a] -- a helper function
 (!) r w = map snd $ filter ((==) w . fst) r
 
 --truth in a model
@@ -98,7 +99,7 @@ trueEverywhere (KrM x y z) f = all (\w -> makesTrue (KrM x y z, w) f) x
 We will also have to be able to check whether a formula is valid on the frame underlying a Kripke model. This is implemented as follows:
 \vspace{10pt}
 \begin{code}
--- Maps Propositional Modal Logic to a KL atom
+-- Maps ModForm atom to a KL atom
 propToAtom :: Proposition -> Atom
 propToAtom n = Pred "P" [StdNameTerm (StdName ("n" ++ show n))]  -- e.g., 1 -> P(n1)
 
@@ -132,7 +133,6 @@ isValidKr f (KrM univ _ rel) =
   let props = uniqueProps f
       valuations = allValuations univ props
   in all (\v -> all (\w -> makesTrue (KrM univ v rel, w) f) univ) valuations
-
 \end{code}
 
 Sometimes it will be useful to convert between models of type \verb?KripkeModel WorldState? and models of type \verb?KripkeModel Integer?. To enable this, we provide the following functions:
@@ -184,15 +184,10 @@ instance (Eq a, Ord a) => Eq (KripkeModel a) where
    (KrM u v r) == (KrM u' v' r') = 
       (nub. sort) u == (nub. sort) u' && all (\w -> (nub. sort) (v w) ==  (nub. sort) (v' w)) u && (nub. sort) r == (nub. sort) r'
 \end{code}
-\emph{NB:} the following is possible: Two models of type \verb?KripkeModel WorldState?s are equal, we convert both to models of type \verb?KripkeModel Integer?s and the resulting models are not equal. \\
-
-Why is this possible? Because when checking for equality between models of type \verb?KripkeModel WorldState?s, we ignore the order of worlds in the list that defines the universe; but for the conversion to \verb?KripkeModel Integer?, the order matters!
+\emph{NB:} the following is possible: Two models of type \verb?KripkeModel WorldState?s are equal, we convert both to models of type \verb?KripkeModel Integer?s and the resulting models are not equal. Why is this possible? Because when checking for equality between models of type \verb?KripkeModel WorldState?s, we ignore the order of worlds in the list that defines the universe; but for the conversion to \verb?KripkeModel Integer?, the order matters!
 
 \subsection{Translation functions: KL to Kripke}
-\textbf{Desiderata}\\
-In our implementation, to do justice to the the fact that translation functions can only sensibly be defined for \emph{some} Kripke models, and \emph{some} $\mathcal{KL}$ formulas, we use the \verb?Maybe? monad provided by Haskell.\\
-To do justice to the fact that evaluating in a $\mathcal{KL}$-model is more like evaluating a formula at a specific world in a Kripke model, than like evaluating a formula with respect to a whole Kripke model, we translate from pairs of Kripke models and worlds to $\mathcal{KL}$-models, rather than just from Kripke models to $\mathcal{KL}$-models. \\
-Thus, these are the types of our translation functions:
+In our implementation, to do justice to the the fact that translation functions can only sensibly be defined for \emph{some} Kripke models, and \emph{some} $\mathcal{KL}$ formulas, we use the \verb?Maybe? monad provided by Haskell. To do justice to the fact that evaluating in a $\mathcal{KL}$-model is more like evaluating a formula at a specific world in a Kripke model, than like evaluating a formula with respect to a whole Kripke model, we translate from pairs of Kripke models and worlds to $\mathcal{KL}$-models, rather than just from Kripke models to $\mathcal{KL}$-models. Thus, these are the types of our translation functions:
 \begin{enumerate}
 \item \begin{verbatim}
 translateFormToKr :: Formula -> Maybe ModForm
@@ -211,15 +206,15 @@ kripkeToKL :: KripkeModel WorldState -> WorldState -> Maybe Model
 \end{verbatim}
 \end{enumerate}
 
-What constraints do we want our translation functions to satisfy? We propose that reasonable translation functions should at least satisfy these constraints: for any $\mathcal{KL}$ model \verb?Model w e d?, any translatable $\mathcal{KL}$ formula \verb?f?, any translatable Kripke model \verb?KrM uni val rel?, and any modal formula \verb?g?,
+To be useful for comparing between logics, we propose that translation functions should at least satisfy the following constraints: for any $\mathcal{KL}$ model \verb?Model w e d?, any translatable $\mathcal{KL}$ formula \verb?f?, any translatable Kripke model \verb?KrM uni val rel?, and any modal formula \verb?g?,
 \begin{enumerate}
-\item Translating formulas back and forth shouldn't change them:
+\item \emph{Translating formulas back and forth shouldn't change them:}
   \begin{itemize}
   \item \verb?translateFormToKL (fromJust (translateFormToKr f)) = f?
   \item \verb?fromJust (translateFormToKr (translateFormToKL g)) = g?
   \end{itemize}
 
-\item Truth values should be preserved by the translations:
+\item \emph{Truth values should be preserved by the translations:}
   \begin{itemize}
   \item \verb?Model w e d |= f? iff
   \newline
@@ -254,7 +249,7 @@ translateFormToKr _                              = Nothing
 \begin{itemize}
 \item the worlds are all the world states in the epistemic state of the $\mathcal{KL}$ model, plus the actual world state;
 \item for each world, the propositional variables true at it are the translations of the atomic formulas consisting of "P" followed by a standard name that are true at the world state;
-\item the worlds from within the epistemic state all see each other, and themselves and the actual world sees all other worlds.
+\item the worlds from within the epistemic state all see each other, and themselves; and the actual world sees all other worlds.
 \end{itemize}
 \vspace{10pt}
 \begin{code}
@@ -292,7 +287,6 @@ translateFormToKL (P n) = Atom (Pred "P" [StdNameTerm (StdName ("n" ++ show n))]
 translateFormToKL (Neg form) = Not (translateFormToKL form)                          -- Negation is preserved recursively
 translateFormToKL (Dis form1 form2) = Or (translateFormToKL form1) (translateFormToKL form2)
 translateFormToKL (Box form) = K (translateFormToKL form)                            -- Box becomes K, representing knowledge
-
 \end{code}
 
 \textbf{Translation functions for models}\\
@@ -319,7 +313,6 @@ isEuclidean = isValidKr (Dis (Box (Neg (P 1))) (Box (dia (P 1))))  -- \Box \neg 
 -- Checks if a Kripke model is transitive
 isTransitive :: (Eq a, Ord a) => KripkeModel a -> Bool
 isTransitive = isValidKr (Dis (Neg (Box (P 1))) (Box (Box (P 1))))  -- \neg \Box P1 \lor \Box \Box P1 holds for transitive relations
-
 \end{code}
 
 We further need the constraint that the world selected to be the actual world in the Kripke Model is in the universe of the given Kripke Model. This is ensured by the \verb?isInUniv? function.
@@ -329,7 +322,6 @@ We further need the constraint that the world selected to be the actual world in
 -- Checks if a world is in the Kripke model’s universe
 isInUniv :: WorldState -> [WorldState] -> Bool
 isInUniv = elem  -- Simple membership test
-
 \end{code}
 
 \textbf{The main function to translate Kripke Models}
