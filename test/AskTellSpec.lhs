@@ -40,24 +40,11 @@ spec = describe "ask - Example Tests" $ do
                                 tell  (d' :: Set StdName) (e :: Set WorldState) taut1 `shouldBe` e
                         
                         
-                         -- $ forAll \d -> d :: Set 
-                        -- property $ tell (domain (m :: Model)) (epistemicState m) taut1 `shouldBe` True 
 
-                        
+        --                         
 
-
-
-
-        -- arbitrary epistemic state
-        -- arbitrary domain
-        -- arbitrary worldstate
-
-        -- describe "askModel - Example Tests" $ do
-        -- 
         -- TELL 
 
-
-        -- TELL ASK - always returns true
 
 
         describe "tell - Example Tests" $ do
@@ -74,6 +61,7 @@ spec = describe "ask - Example Tests" $ do
                 --        let g = Atom atom2
                 --         (tell d e g) <> e `shouldBe` True
         
+        -- TELL ASK - always returns true
 
              
 \end{code}
