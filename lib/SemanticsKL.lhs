@@ -2,10 +2,10 @@
 
 \subsection{Semantics of \texorpdfstring{ $\mathcal{KL}$}{KL}}\label{subsec:KLsemantics}
 As we have seen in the previous section, $\mathcal{KL}$ is an epistemic extension of first-order logic. 
-The main differences to classical first-order logic are that introduces a knowledge operator $\mathbf{K}$ and uses an infinite domain $\mathcal{N}$ of standard names to denote individuals.
-It is designed to model knowledge and uncertainty, as detailed in \textcite{Lokb}.\\ 
-Formulas of $\mathcal{KL}$ are evaluated in world states: consistent valuations of atoms and terms, while epistemic states capture multiple possible worlds, reflecting epistemic possibilities.\\
-The semantics are implemented in the \verb?SemanticsKL? module, which imports syntactic definitions from \verb?SyntaxKL? and uses Haskell's \verb?Data.Map? and \verb?Data.Set? for efficient and consistent mappings.
+The main differences to classical first-order logic are that $\mathcal{KL}$ introduces a knowledge operator $\mathbf{K}$ and uses an infinite domain $\mathcal{N}$ of standard names to denote individuals.
+$\mathcal{KL}$ is designed to model knowledge and uncertainty, as detailed in \textcite{Lokb}.\\ 
+Formulas of $\mathcal{KL}$ are evaluated in world states, which are consistent valuations of atoms and terms, while epistemic states consist of multiple possible worlds, reflecting epistemic possibilities.\\
+The semantics is implemented in the \verb?SemanticsKL? module, which imports syntactic definitions from \verb?SyntaxKL? and uses Haskell's \verb?Data.Map? and \verb?Data.Set? for efficient and consistent mappings.
 
 \vspace{10pt}
 \begin{code}
@@ -24,7 +24,7 @@ import Test.QuickCheck
 }
 
 \textbf{Worlds and Epistemic States}\\
-A \verb?WorldState? represents a single possible world in $\mathcal{KL}$, mapping truth values to primitive atoms and standard names to primitive terms. We have implemented it as mapping to atoms and terms instead of just primitive ones, as we make sure when creating a \verb?WorldState? to only use primitive atoms and primitive terms (by the function \verb?mkWorldState?).
+A \verb?WorldState? represents a single possible world in $\mathcal{KL}$, mapping primitive atoms to truth values and primitive terms to standard names. We implemented it as mapping from atoms and terms instead of just primitive ones; but we make sure to only ever actually use \emph{primitive} atoms and \emph{primitive} terms when creating a \verb?WorldState? (using the function \verb?mkWorldState?).
 An \verb?EpistemicState?, defined as a set of \verb?WorldState?s, models the set of worlds an agent considers possible, enabling the evaluation of the $\mathbf{K}$ operator.
 
 \vspace{10pt}
@@ -48,11 +48,10 @@ instance Arbitrary WorldState where
 }
 
 \textbf{Constructing World States}\\
-We can construct world states by using \verb?mkWorldState?, which builds a \verb?WorldState? from lists of primitive atoms and terms. 
-While a \verb?WorldState? is defined in terms of \verb?Atom? and \verb?Term?, we use \verb?mkWorldState? to make sure that we can only have primitive atoms and primitive terms in the mapping.
-To be able to use primitive terms and atoms in other functions just as we would use \verb?Atom? and \verb?Term? (since primitive atoms and primitive terms are atoms and terms as well), we convert the constructors to those of regular terms and atoms.
-We then use the function \verb?checkDups? to ensure that there are no contradictions in the world state (e.g., P(n1) mapped to both \verb?True? and \verb?False?), thus reinforcing the single-valuation principle (\cite{Lokb}, p. 24).
-The function \verb?mkWorldState? then constructs maps for efficient lookup.
+We can construct world states using \verb?mkWorldState?, which builds a \verb?WorldState? from lists of primitive atoms and terms. 
+To be able to use primitive terms and atoms in other functions just as we would use \verb?Atom? and \verb?Term? (since primitive atoms and primitive terms, mathematically speaking, are atoms and terms as well), \verb?mkWorldState? first converts the primitive constructors to those of regular terms and atoms.
+It then uses the function \verb?checkDups? to ensure that there are no contradictions in the world state (e.g., P(n1) mapped to both \verb?True? and \verb?False?), thus ensuring we abide by the single-valuation principle (\cite{Lokb}, p. 24).
+Finally, \verb?mkWorldState? constructs maps for efficient lookup.
 
 \vspace{10pt}
 \begin{code}
@@ -76,13 +75,11 @@ checkDups ((k, v) : rest) =  -- Recursively checks each key k against the rest o
 
 \end{code}
 
-Since we have decided to change the constructors of data of type \verb?PrimitiveAtom? or \verb?PrimitiveTerm? to those of \verb?Atom? and \verb?Term?, we have implemented two helper-functions to check if a \verb?Term? or an \verb?Atom? is primitive.
-This way, we can, if needed, check whether a given \verb?Term? or \verb?Atom? is primitive and then change the constructors appropriately.
-
+Since we decided to have \verb?mkWorldState? change the constructors of data type \verb?PrimitiveAtom? or \verb?PrimitiveTerm? to those of \verb?Atom? and \verb?Term?, we also implemented two helper functions to check whether a \verb?Term? or an \verb?Atom? is primitive.
 
 \hide{ 
   % currently not used but useful for understanding the 
-  % language so we keep it as pesuodo documentation
+  % language so we keep it as pseudo documentation
   % and for future use
 \begin{code}
 -- Checks if a term is primitive (contains only standard names)
@@ -132,14 +129,14 @@ We need these functions to be able to define a function that checks whether a fo
 
 \vspace{10pt}
 \begin{code}
--- Check if a term is ground (contains no variables).
+-- Check whether a term is ground (contains no variables).
 isGround :: Term -> Bool
 isGround t = case t of
   VarTerm _ -> False
   StdNameTerm _ -> True
   FuncAppTerm _ args -> all isGround args
 
--- Check if a formula is ground.
+-- Check whether a formula is ground.
 isGroundFormula :: Formula -> Bool
 isGroundFormula f = case f of
   Atom (Pred _ terms) -> all isGround terms
@@ -171,7 +168,7 @@ subst x n formula = case formula of
 \end{code}
 
 \textbf{Truth in a Model}\\
-Since we want to be able check if a formula is true in a model, we want to make the model explicit:
+Since we want to be able check whether a formula is true in a model, we define a type for $\mathcal{KL}$ models:
 \vspace{10pt}
 \begin{code}
 -- Represents a model with an actual world, epistemic state, and domain
@@ -190,8 +187,8 @@ instance Arbitrary Model where
 \end{code}
 }
 
-A \verb?Model? encapsulates an actual world, an epistemic state, and a domain, enabling the evaluation of formulas with the $\mathbf{K}$-operator. 
-The function \verb?satisfiesModel? implements $\mathcal{KL}$'s satisfaction relation, checking truth across worlds.
+A \verb?Model? consists of an actual world, an epistemic state, and a domain. 
+The function \verb?satisfiesModel? implements $\mathcal{KL}$'s satisfaction relation.
 
 \vspace{10pt}
 \begin{code}
@@ -213,7 +210,7 @@ satisfiesModel (Model _ e d) (K f) = all (\w' -> satisfiesModel (Model w' e d) f
 \end{code}
 
 \textbf{Grounding and Model Checking}\\
-Building on this we can implement a function \verb?checkModel? that checks whether a formula holds in a given model.
+Building on this, we implement a function \verb?checkModel? that checks whether a formula holds in a given model.
 \verb?checkModel? ensures a formula holds by grounding it with all possible substitutions of free variables, using \verb?groundFormula? and \verb?freeVars? to identify and replace free variables systematically.
 
 \vspace{10pt}
@@ -224,8 +221,8 @@ checkModel m phi = all (satisfiesModel m) (groundFormula phi (domain m))
 \end{code}
 
 Note that we use the function \verb?groundFormula? here. 
-Since we have implemented \verb?satisfiesModel? such that it assumes ground formulas or errors out, we decided to handle free variables by grounding formulas, given a set of free standard names to substitute. 
-Alternatives would be to throw an error or always substitute the same standard name. The implementation that we have chosen is more flexible and allows for more varied usage, however it is computationally expensive. We still decided to handle free variables in this way, as this implementation is the most faithful to the theory as described in \textcite{Lokb}.
+Since we implemented \verb?satisfiesModel? such that it assumes ground formulas or errors out, we decided to handle free variables by grounding formulas, given a set of free standard names to substitute. 
+Alternatives would be to throw an error or always substitute the same standard name. The implementation that we chose is computationally expensive. However, we chose because, (i), it is more flexible and allows for more varied usage, and, (ii), it is the most faithful to the theory as described in \textcite{Lokb}.
 We implement \verb?groundFormula? as follows:
 
 \vspace{10pt}
