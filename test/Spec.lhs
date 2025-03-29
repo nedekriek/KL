@@ -1,4 +1,4 @@
-\subsection{Tests}
+\section{Tests}
 Testing is done using the Hspec testing framework and QuickCheck for property-based testing. The tests are organized into different modules, each focusing on a specific aspect of the code. The main test file is \verb|Spec.lhs|, which serves as an entry point for running all the tests. This file uses the Hspec framework to automatically discover and run all the tests in the project. The \verb|hspec-discover| tool automatically finds all the test files with the suffix \verb|Spec.lhs| in the \verb|test| directory and runs them. 
 
 \vspace{10pt}
