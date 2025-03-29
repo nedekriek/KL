@@ -2,7 +2,7 @@
 
 To use $\mathcal{KL}$ to interact with a knowledge base, \textcite{Lokb} defines two operators on epistemic states: $\emph{ask}$ and $\emph{tell}$. Informally, $\emph{ask}$ is used to determine if a sentence is known to a knowledge base, whereas $\emph{tell}$ is used to add a sentence to the knowledge base. Since epistemic states are sets of possible worlds, the more known sentences there are, the smaller the set of possible worlds. For this purpose, an $\emph{initial}$ epistemic state is also defined to contain all possible worlds given a finite set of atoms and terms.
 
-\vspace{10pt}
+\hide{
 \begin{code}
 module AskTell (ask,askModel, tell, tellModel, initial) where
 
@@ -10,6 +10,7 @@ import SyntaxKL
 import SemanticsKL
 import qualified Data.Set as Set
 \end{code}
+}
 
 The $\emph{ask}$ operator determines whether or not a formula is known to a knowledge base. Formally, given an epistemic state $e$ and any sentence $\alpha$ of $\mathcal{KL}$,
 $$ask[e,\alpha] = \begin{cases} 

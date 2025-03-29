@@ -35,15 +35,18 @@ data WorldState = WorldState
    termValues :: Map Term StdName   --Maps (primitive) terms to standard names
   }  deriving (Eq, Ord, Show)
 
---TODO: hide
+-- A set of possible world states, modeling epistemic possibilities
+type EpistemicState = Set WorldState
+\end{code}
+
+\hide{
+\begin{code}
 instance Arbitrary WorldState where
   arbitrary :: Gen WorldState
   arbitrary = WorldState <$> arbitrary <*> arbitrary
-
--- A set of possible world states, modeling epistemic possibilities
-type EpistemicState = Set WorldState
-
 \end{code}
+}
+
 \textbf{Constructing World States}\\
 We can construct world states by using \verb?mkWorldState?, which builds a \verb?WorldState? from lists of primitive atoms and terms. 
 While a \verb?WorldState? is defined in terms of \verb?Atom? and \verb?Term?, we use \verb?mkWorldState? to make sure that we can only have primitive atoms and primitive terms in the mapping.
@@ -173,12 +176,15 @@ data Model = Model
   , epistemicState :: EpistemicState -- Set of possible world states
   , domain :: Set StdName          -- Domain of standard names
   } deriving (Show, Eq)
+\end{code}
 
---TODO hide
+\hide{
+\begin{code}
 instance Arbitrary Model where 
   arbitrary:: Gen Model 
   arbitrary = Model <$> arbitrary <*> arbitrary <*> arbitrary
 \end{code}
+}
 
 A \verb?Model? encapsulates an actual world, an epistemic state, and a domain, enabling the evaluation of formulas with the $\mathbf{K}$-operator. 
 The function \verb?satisfiesModel? implements $\mathcal{KL}$'s satisfaction relation, checking truth across worlds.
