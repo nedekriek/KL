@@ -1,3 +1,4 @@
+\hide{
 \begin{code}
 module TableauSpec where
 

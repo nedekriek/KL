@@ -1,3 +1,4 @@
+\hide{
 \begin{code}
 module SemanticsKLSpec where
 
@@ -13,13 +14,13 @@ import SyntaxKL    -- types used in tests
 import Generators  -- helper functions for testing
 
 \end{code}
+}
 
-The following tests are for the semantics of $\mathcal{KL}$, which are defined in the SemanticsKL module. The tests are written using the Hspec testing framework and QuickCheck for property-based testing. The tests cover the evaluation of terms, formulas, and models, as well as model checking function. The Generators file provides helper functions for generating implementing testing, but have been omitted for brevity.
 
-
+\vspace{10pt}
 \begin{code}
 spec :: Spec
-spec =  describe "evalTerm - Unit Tests" $ do
+spec =  describe "evalTerm - Example Tests" $ do
         it "evalTerm returns the StdName after applying all functions (depth 2)" $ do
             let n1 = StdName "n1"
                 n2 = StdName "n2"
@@ -37,9 +38,11 @@ spec =  describe "evalTerm - Unit Tests" $ do
                 property $ \ w x -> evaluate (evalTerm w (VarTerm x)) `shouldThrow` anyException
             it "evalTerm returns the StdName for StdNameTerm" $ do
                 property $ \w n -> evalTerm w (StdNameTerm n) == n
+\end{code}
 
-
-        describe "isGround - Unit Tests" $ do
+\hide{
+\begin{code}
+        describe "isGround - Example Tests" $ do
             it "isGround returns True for StdNameTerm" $ do
                 isGround (StdNameTerm $ StdName "n1") `shouldBe` True
             it "isGround returns False for VarTerm" $ do
@@ -51,7 +54,7 @@ spec =  describe "evalTerm - Unit Tests" $ do
                 isGround term `shouldBe` False
 
 
-        describe "isGroundFormula - Unit Tests" $ do
+        describe "isGroundFormula - Example Tests" $ do
             it "isGroundFormula returns False for Atom with a non-ground term" $ do
                 isGroundFormula (Atom (Pred "P" [VarTerm $ Var "x"])) `shouldBe` False
             it "isGroundFormula returns False for Equal with a non-ground term" $ do
@@ -65,7 +68,7 @@ spec =  describe "evalTerm - Unit Tests" $ do
                 property $ \n f -> not $ isGroundFormula (Exists (Var n) (f :: Formula))
 
 
-        describe "substTerm - Unit Tests" $ do
+        describe "substTerm - Example Tests" $ do
             it "substTerm replaces the variable with the StdName" $ do
                 let term = FuncAppTerm "f" [VarTerm $ Var "x", StdNameTerm $ StdName "n1"]
                 substTerm (Var "x") (StdName "n2") term `shouldBe` FuncAppTerm "f" [StdNameTerm $ StdName "n2", StdNameTerm $ StdName "n1"]
@@ -74,7 +77,7 @@ spec =  describe "evalTerm - Unit Tests" $ do
                 substTerm (Var "x") (StdName "n2") term `shouldBe` term
 
 
-        describe "subst - Unit Tests" $ do
+        describe "subst - Example Tests" $ do
             it "subst replaces the variable with the StdName in an Atom" $ do
                 let atom = Atom (Pred "P" [VarTerm $ Var "x"])
                 show (subst (Var "x") (StdName "n1") atom) `shouldBe` show (Atom (Pred "P" [StdNameTerm $ StdName "n1"]))
@@ -99,7 +102,10 @@ spec =  describe "evalTerm - Unit Tests" $ do
                 let formula = K (Atom (Pred "P" [VarTerm $ Var "x"]))
                 show (subst (Var "x") (StdName "n2") formula) `shouldBe` show (K (Atom (Pred "P" [StdNameTerm $ StdName "n2"])))
 
+\end{code}
+}
 
+\begin{code}
         describe "satisfiesModel - Property Tests" $ do
             -- test fixtures
             let x = Var "x"
@@ -116,6 +122,11 @@ spec =  describe "evalTerm - Unit Tests" $ do
                     property $ \m -> satisfiesModel m (Or (Not pt) (Not (Not pt))) `shouldBe` True
                 it "satisfiesModel errors for P(x) -> ~~ P(x)" $ do
                     property $ \m -> evaluate (satisfiesModel m (Or (Not px) (Not (Not px)))) `shouldThrow` anyException
+
+\end{code}
+
+\hide{
+\begin{code}
                 it "satisfiesModel satisfies t=t" $ do
                     property $ \m -> satisfiesModel m (Equal n1 n1) `shouldBe` True
                 it "satisfiesModel errors for x=x" $ do
@@ -140,8 +151,7 @@ spec =  describe "evalTerm - Unit Tests" $ do
                 it "satisfiesModel does not satisfy (Exists x (x /= x))" $ do
                     property $ \m -> satisfiesModel m (Exists x (Not (Equal (VarTerm x) (VarTerm x)))) `shouldBe` False
         
-
-        describe "freeVars - Unit Tests" $ do
+        describe "freeVars - Example Tests" $ do
             -- test fixtures
             let x = Var "x"
                 y = Var "y"
@@ -164,7 +174,7 @@ spec =  describe "evalTerm - Unit Tests" $ do
             -- This is an expensive test, so we limit the size of the formula
             it "groundFormula returns a ground formula (dependant on isGroundFormula passing all tests)" $ do
                property $ forAll (resize 5 arbitrary) $ \f ->
-                   forAll genStdNameSet $ \s ->
+                   forAll (resize 3 genStdNameSet) $ \s ->
                        all isGroundFormula (groundFormula (f :: Formula) s)
 
         describe "checkModel - Property Tests" $ do
@@ -178,3 +188,4 @@ spec =  describe "evalTerm - Unit Tests" $ do
                     property $ \m -> checkModel m (Equal (VarTerm x) (VarTerm x)) `shouldBe` True 
 
 \end{code}
+}

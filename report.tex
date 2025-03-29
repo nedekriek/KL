@@ -36,49 +36,21 @@ The semantics for this logic evaluates formulae on world states and epistemic st
 \input{lib/AskTell.lhs}
 
 % MISSING TRANSLATION MODULE
-% \input{lib/Translator.lhs}
+\input{lib/Translator.lhs}
 
 \input{lib/Tableau.lhs}
 
-% \input{exec/Main.lhs}
-
-\section{How to Use the Code}
-
-In this section we will provide instructions and examples on how to use our code.
-
-\subsection{Syntax and Semantics}
-To use the semantic evaluation functions from the SemanticsKL module in GHCi, begin by saving the file (e.g., SemanticsKL.lhs) in your working directory. Start GHCi by typing ghci in your terminal from that directory, then load the module with :load SemanticsKL.lhs, ensuring SyntaxKL.lhs is also present and correctly imported. After loading, you can interactively test $\mathcal{KL}$ models and formulas. 
-For instance, create a simple world state with let ws = mkWorldState [(PPred "P" [StdName "n1"], True)] [], a model with let m = Model ws (Set.singleton ws) (Set.fromList [StdName "n1"]), and a formula like let f = Atom (Pred "P" [StdNameTerm (StdName "n1")]). Check if the formula holds using checkModel m f, which should return True since $P(n1)$ is true in the model. Alternatively, evaluate satisfiability with satisfiesModel m f.
-
-\subsection{Satisfiability and Validity Checking}
-To use the tableau-based satisfiability and validity checkers from the Tableau module in GHCi, first ensure the file (e.g., Tableau.lhs) is saved in your working directory. Launch GHCi from that directory by running ghci in your terminal. Load the module with :load Tableau.lhs, which will compile and make its functions available, assuming SyntaxKL.lhs and SemanticsKL.lhs are also in the same directory and properly imported. Once loaded, you can test formulas interactively. For example, define a formula like let f = Or (Atom (Pred "P" [StdNameTerm (StdName "n1")])) (Not (Atom (Pred "P" [StdNameTerm (StdName "n1")]))) and check its satisfiability with isSatisfiable f, which should return True (since $P(n1)\lor \neg P(n1)$ is satisfiable). Similarly, test validity with isValid f, which returns False. Use :reload to update changes after editing the file, and :quit to exit GHCi.
-
-\subsection{Ask and Tell}
-To use the AskTell module's ASK, TELL, and INITIAL operators in GHCi, set up the file as described in the previous subsections. 
-Once loaded, you can experiment with epistemic operations. For example, define a domain with let d = Set.fromList [StdName "n1"], an initial epistemic state with let e = initial [PPred "P" [StdName "n1"]] [] [StdName "n1"], and a formula like let f = Atom (Pred "P" [StdNameTerm (StdName "n1")]). Test the ASK operator with ask d e f, which checks if $P(n1)$ is known across all worlds.
-Apply TELL with let e' = tell d e f to filter worlds where $P(n1)$ holds, then verify with ask d e' f, expecting True. Alternatively, use askModel and tellModel with a Model, such as let m = Model (Set.findMin e) e d, via askModel m f and tellModel m f.
-
-\subsection{Translations}
-You can interactively test translations and model properties. To do so, you can, for example, define a KL formula like let f = K (Atom (Pred "P" [StdNameTerm (StdName "n1")]))) and translate it to standard epistemic logic (SEL) with translateFormToKr f, expecting Just (Box (P 1)). 
-Conversely, translate an SEL formula like let g = Box (P 1) to KL with translateFormToKL g, yielding K (Atom (Pred "P" [StdNameTerm (StdName "n1")]))). 
-For models, create a KL model with let m = model1 and convert it to a Kripke model using translateModToKr m, then compare with kripkeM1 via test1. You can try out the Kripke-to-KL translation by using kripkeToKL exampleModel3 (makeWorldState 30), checking if it succeeds. You could also run some of our predefined tests like ftest1 or testAllFormulae to get to know our translation functions.
-
-\subsection{Tests}
-You can run all the tests and examine the current code coverage run \verb|stack clean && stack test --coverage|.
 
 % importing tests
+\input{test/Spec.lhs}
 \input{test/Generators.lhs}
-\input{test/AskTellSpec.lhs}
 \input{test/SemanticsKLSpec.lhs}
-\input{test/SyntaxKLSpec.lhs}
-\input{test/TableauSpec.lhs}
+\input{test/AskTellSpec.lhs}
 \input{test/TranslatorSpec.lhs}
+\input{test/TableauSpec.lhs}
 
-%\input{Conclusion.tex}
 
 \addcontentsline{toc}{section}{Bibliography}
-% \bibliographystyle{alpha}
-
 \printbibliography
 
 \end{document}

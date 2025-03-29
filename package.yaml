@@ -18,17 +18,14 @@ dependencies:
   - random
   - template-haskell
 
+default-extensions:
+  - InstanceSigs
+  - NondecreasingIndentation
+  
 library:
   source-dirs: lib
   dependecies:
     - test
-
-executables:
-  myprogram:
-    main: Main.lhs
-    source-dirs: exec
-    dependencies:
-      - KL
 
 tests:
   all-tests:

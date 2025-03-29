@@ -1,67 +1,108 @@
-
-
 \subsection{Syntax of \texorpdfstring{$\mathcal{KL}$}{KL}}\label{subsec:KLsyntax}
 
-The syntax of the language $\mathcal{KL}$ is described in \textcite{Lokb} and inspired by Levesque's work (\cite{levesque1981}).
-The SyntaxKL module establishes the foundation for $\mathcal{KL}$'s syntax, defining the alphabet and grammar used in subsequent semantic evaluation.
+The syntax of the language $\mathcal{KL}$ is described in \textcite{Lokb} and was first developed by Levesque (\cite{levesque1981}).
+The \verb?SyntaxKL? module establishes the foundation for $\mathcal{KL}$'s syntax, defining the alphabet and grammar used in subsequent semantic evaluation.
+\hide{
 \begin{code}
-{-# LANGUAGE InstanceSigs #-}
-
-
 module SyntaxKL where
-
 import Test.QuickCheck
-
 \end{code}
+}
 
 \textbf{Symbols of $\mathcal{KL}$}\\
-The expressions of $\mathcal{KL}$ are constituted by sequences of symbols drawn from the following two sets (cf. \cite{levesque1981}): 
-Firstly, the \textit{logical symbols}, which consist of the logical connectives and quantifiers $\exists, \vee, \neg$, as well as punctuation and parentheses.
-Furthermore, it compromises a countably infinite supply of first-order variables  denoted by the set $\{x, y, z, \ldots\}$, a countably infinite supply of standard names, represented by the set $\{\#1, \#2,\ldots\}$, and the equality symbol =. 
-The \textit{non-logical symbols} comprise predicate symbols of any arity $\{P, Q, R, \ldots\}$, which are intended to represent domain-specific properties and relations, and function symbols of any arity, which are used to denote mappings from individuals to individuals (\cite{Lokb}, p.22). \\
-n this implementation, standard names are represented as strings (e.g., "n1", "n2") via the StdName type, and variables are similarly encoded as strings (e.g., $"x"$, $"y"$) with the Variable type, ensuring that we have a distinct yet infinite supplies of each.
+The language \(\mathcal{KL}\) is built on the following alphabet:
+\begin{itemize}
+    \item \textbf{Variables}: \(x, y, z, \ldots\) (an infinite set);
+    \item \textbf{Constants}: \(c, d, n1, n2, \ldots\) (including standard names);
+    \item \textbf{Function symbols}: \(f, g, h, \ldots\) (with associated arities);
+    \item \textbf{Predicate symbols}: \(P, Q, R, \ldots\) (with associated arities);
+    \item \textbf{Logical symbols}: \(\neg, \vee, \exists, =, $\mathbf{K}$, (, )\).
+\end{itemize}
+In our implementation, standard names are represented as strings (e.g., "n1", "n2") via the \verb?StdName? type, and variables are similarly encoded as strings (e.g., "x", "y") with the \verb?Variable? type, ensuring that we have a distinct yet infinite supplies of each.
 
+\hide{
 \begin{code}
 arbitraryUpperLetter :: Gen String
 arbitraryUpperLetter = (:[]) <$> elements ['A'..'Z']
 
 arbitraryLowerLetter :: Gen String
 arbitraryLowerLetter = (:[]) <$> elements ['a'..'z']
+\end{code}
+}
 
+\begin{code}
 -- Represents a standard name (e.g., "n1") from the infinite domain N
 newtype StdName = StdName String deriving (Eq, Ord, Show)
+
+-- Represents a first-order variable (e.g., "x")
+newtype Variable = Var String deriving (Eq, Ord, Show)
+\end{code}
+\hide{
+\begin{code}
 instance Arbitrary StdName where
   arbitrary:: Gen StdName
   arbitrary = StdName . ("n" ++) . show <$> elements [1 .. 20::Int]
 
--- Represents a first-order variable (e.g., "x")
-newtype Variable = Var String deriving (Eq, Ord, Show)
 instance Arbitrary Variable where
   arbitrary:: Gen Variable
   arbitrary = Var . show <$> elements [1 .. 20::Int]
 \end{code}
+}
 
-\textbf{Terms and Atoms}\\
-Terms in $\mathcal{KL}$ are the building blocks of expressions, consisting of variables, standard names, or function applications. 
-Atomic propositions (atoms) are formed by applying predicate symbols to lists of terms. 
-To distinguish primitive terms (those that contain no variable and only a single function symbol) and primitive atoms (those atoms that contain no variables and only standard names as terms) for semantic evaluation, we also define PrimitiveTerm and PrimitiveAtom.
+\textbf{Terms, Atoms, and Formulas}\\
+The syntax of \(\mathcal{KL}\) is defined recursively in Backus-Naur Form as follows:\\
+Terms represent objects in the domain:
+\begin{verbatim}
+<term>            ::= <variable> | <constant> | <function-term>
+<variable>        ::= "x" | "y" | "z" | ...
+<constant>        ::= "c" | "d" | "n1" | "n2" | ...
+<function-term>   ::= <function-symbol> "(" <term-list> ")"
+<function-symbol> ::= "f" | "g" | "h" | ...
+<term-list>       ::= <term> | <term> "," <term-list>
+\end{verbatim}
 
+Well-formed formulas (wffs) define the logical expressions:
+\begin{verbatim}
+<wff> ::= <atomic-wff> | <negated-wff> | <disjunction-wff> | 
+          <existential-wff> | <knowledge-wff>
+<atomic-wff>       ::= <predicate> | <equality>
+<predicate>        ::= <predicate-symbol> "(" <term-list> ")"
+<predicate-symbol> ::= "P" | "Q" | "R" | ...
+<equality>         ::= <term> "=" <term>
+<negated-wff>      ::= "\not" <wff>
+<disjunction-wff>  ::= "(" <wff> "\lor" <wff> ")"
+<existential-wff>  ::= "\exists" <variable> "." <wff>
+<knowledge-wff>    ::= "K" <wff>
+\end{verbatim}
+
+Predicate and function symbols have implicit arities, abstracted here for generality.
+The epistemic operator \(\mathbf{K}\) allows nested expressions, e.g., \(\mathbf{K} \neg \mathbf{K} P(x)\).\\
+Sentences of $\mathcal{KL}$ can look like this:
+\begin{itemize}
+    \item \(Teach(ted, sue)\):\\
+    \verb?<wff> -> <atomic-wff> -> <predicate> -> "Teach" "(" "ted" "," "sue" ")"?
+    \item \(\boldsymbol{K} \exists x . Teach(x, sam)\):
+    \begin{verbatim}
+    <wff> -> <knowledge-wff> -> "K" <wff>
+          -> "K" <existential-wff> -> "K" "\exists" "x" "." <wff>
+          -> "K" "\exists" "x" "." "Teach" "(" "x" "," "sam" ")"
+    \end{verbatim}
+    \item \(\neg \boldsymbol{K} Teach(tina, sue)\):
+    \begin{verbatim}
+    <wff> -> <negated-wff> -> "\neg" <wff>
+          -> "\neg" <knowledge-wff> -> "\neg" "K" <wff>
+          -> "\neg" "K" "Teach" "(" "tina" "," "sue" ")"
+    \end{verbatim}
+\end{itemize}
+To distinguish primitive terms (those that contain no variable and only a single function symbol) and primitive atoms (those atoms that contain no variables and only standard names as terms), we also define \verb?PrimitiveTerm? and \verb?PrimitiveAtom?. These definitions will be used for defining the semantics later.
+
+\vspace{10pt}
 \begin{code}
 -- Defines terms: variables, standard names, or function applications
 data Term = VarTerm Variable   -- A variable (e.g., "x")
           | StdNameTerm StdName   -- A standard name (e.g., "n1")
           | FuncAppTerm String [Term]   -- Function application (e.g., "Teacher" ("x"))
           deriving (Eq, Ord, Show)
-
-instance Arbitrary Term where
-  arbitrary :: Gen Term
-  arbitrary = sized $ \n -> genTerm (min n 5) where 
-    genTerm 0 = oneof [VarTerm <$> arbitrary, 
-                       StdNameTerm <$> arbitrary]
-    genTerm n = oneof [VarTerm <$> arbitrary, 
-                       StdNameTerm <$> arbitrary, 
-                       FuncAppTerm <$> arbitraryLowerLetter 
-                                   <*> resize (n `div` 2) (listOf1 (genTerm (n `div` 2)))]
 
 -- Terms with no variables and only a single function symbol
 data PrimitiveTerm = PStdNameTerm StdName   -- e.g., "n1"
@@ -72,33 +113,37 @@ data PrimitiveTerm = PStdNameTerm StdName   -- e.g., "n1"
 data Atom = Pred String [Term]  --e.g. "Teach" ("n1", "n2")
   deriving (Eq, Ord, Show)
 
+-- Atoms with only standard names as terms
+data PrimitiveAtom = PPred String [StdName]
+  deriving (Eq, Ord, Show)
+
+-- KL-formulas
+data Formula = Atom Atom                -- Predicate (e.g. Teach(x, n1))
+              | Equal Term Term         -- Equality (e.g., x = n1)
+              | Not Formula             -- Negation 
+              | Or Formula Formula      -- Disjunction
+              | Exists Variable Formula -- Existential (e.g., exists x (Teach x sue)) 
+              | K Formula               -- Knowledge Operator (e.g., K (Teach ted sue))
+              deriving (Eq, Ord, Show)
+\end{code}
+\hide{
+\begin{code}
+instance Arbitrary Term where
+  arbitrary :: Gen Term
+  arbitrary = sized $ \n -> genTerm (min n 5) where 
+    genTerm 0 = oneof [VarTerm <$> arbitrary, 
+                       StdNameTerm <$> arbitrary]
+    genTerm n = oneof [VarTerm <$> arbitrary, 
+                       StdNameTerm <$> arbitrary, 
+                       FuncAppTerm <$> arbitraryLowerLetter 
+                                   <*> resize (n `div` 2) (listOf1 (genTerm (n `div` 2)))]
+
 instance Arbitrary Atom where
   arbitrary :: Gen Atom
   arbitrary = sized $ \n -> genAtom (min n 5) where 
       genAtom :: Int -> Gen Atom
       genAtom 0 = Pred <$> arbitraryLowerLetter <*> pure []
       genAtom n = Pred <$> arbitraryLowerLetter <*> vectorOf n arbitrary
-
--- Atoms with only standard names as terms
-data PrimitiveAtom = PPred String [StdName]
-  deriving (Eq, Ord, Show)
-
-\end{code}
-
-\textbf{Formulas}\\
-$\mathcal{KL}$-formulas are constructed recursively from atoms, equality, and logical operators. 
-The Formula type includes atomic formulas, equality between terms, negation, disjunction, existential quantification, and the knowledge operator $K$. 
-Additional connectives like universal quantification ($\forall$), implication ($\rightarrow$), and biconditional ($\leftrightarrow$) are defined as derived forms for convenience.
-
-\begin{code}
---Defines KL-formulas with logical and epistemic constructs
-data Formula = Atom Atom                -- Predicate (e.g. Teach(x, "n1"))
-              | Equal Term Term         -- Equality (e.g., x = "n1")
-              | Not Formula             -- Negation 
-              | Or Formula Formula      -- Disjunction
-              | Exists Variable Formula -- Existential (e.g., exists x (Teach x "sue")) 
-              | K Formula               -- Knowledge Operator (e.g., K (Teach "ted" "sue"))
-              deriving (Eq, Ord, Show)
 
 instance Arbitrary Formula where
   arbitrary :: Gen Formula 
@@ -109,7 +154,10 @@ instance Arbitrary Formula where
                           Or <$> genFormula (n `div` 2) <*> genFormula (n `div` 2),
                           Exists <$> arbitrary <*> genFormula (n `div` 2),
                           K <$> genFormula (n `div` 2)]
-                          
+\end{code}
+}
+
+\begin{code}
 -- Universal quantifier as derived form
 klforall :: Variable -> Formula -> Formula
 klforall x f = Not (Exists x (Not f))
