@@ -3,14 +3,13 @@
 
 module Generators where
 
-import SyntaxKL
+import SyntaxKL (Term(..), Atom(..), Formula(..), StdName)
 import SemanticsKL
 import Translator
 
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.List
-import Data.Map (Map)
 import qualified Data.Map as Map
 import Test.QuickCheck
 \end{code}

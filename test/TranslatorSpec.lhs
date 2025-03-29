@@ -5,7 +5,6 @@ module TranslatorSpec where
 import Test.Hspec
 import Test.QuickCheck
 import Data.Maybe
-import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 
