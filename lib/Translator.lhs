@@ -1,4 +1,5 @@
 \section{Comparing KL and Epistemic Logic}
+\vspace{10pt}
 \begin{code}
 module Translator where
 
@@ -32,6 +33,7 @@ The syntax and semantics of PML is well-known: the language is just the language
 \noindent \textbf{Implementation}\\
 \textbf{Syntax}\\
 
+\vspace{10pt}
 \begin{code}
 data ModForm = P Proposition
              | Neg ModForm
@@ -63,6 +65,7 @@ instance Arbitrary ModForm where
 
 For some parts of our project, it will be most convenient to let Kripke models have \verb?WorldState?s (as defined in \verb?SemanticsKL?) as worlds; for others, to have the worlds be \verb?Integer?s. We therefore implement Kripke models as a polymorphic data type, as follows: 
 
+\vspace{10pt}
 \begin{code}
 --definition of models
 type World a = a
@@ -93,6 +96,7 @@ trueEverywhere :: Eq a => KripkeModel a -> ModForm -> Bool
 trueEverywhere (KrM x y z) f = all (\w -> makesTrue (KrM x y z, w) f) x
 \end{code}
 We will also have to be able to check whether a formula is valid on the frame underlying a Kripke model. This is implemented as follows:
+\vspace{10pt}
 \begin{code}
 -- Maps Propositional Modal Logic to a KL atom
 propToAtom :: Proposition -> Atom
@@ -133,6 +137,7 @@ isValidKr f (KrM univ _ rel) =
 
 Sometimes it will be useful to convert between models of type \verb?KripkeModel WorldState? and models of type \verb?KripkeModel Integer?. To enable this, we provide the following functions:
 
+\vspace{10pt}
 \begin{code}
 translateKrToKrInt :: KripkeModel WorldState -> KripkeModel Integer
 translateKrToKrInt (KrM u v r) = KrM u' v' r' where
@@ -166,12 +171,14 @@ makeWorldState n =
 \end{code}
 
 To be able to print models, we define a \verb?Show? instance for \verb?KripkeModel a?:
+\vspace{10pt}
 \begin{code}
 instance Show a => Show (KripkeModel a) where
    show (KrM uni val rel) = "KrM\n" ++ show uni ++ "\n" ++ show [(x, val x) | x <- uni ] ++ "\n" ++ show rel
 \end{code}
 
 Later, we will want to compare models for equality; so we'll also define an \verv?Eq? instance. Comparison for equality will work, at least as long as models are finite. The way this comparison works is by checking that the valuations agree on all worlds in the model. By sorting before checking for equality, we ensure that the order in which worlds appear in the list of worlds representing the universe, the order in which true propositions at a world appear, and the order in which pairs appear in the relation doesn't affect the comparison.
+\vspace{10pt}
 \begin{code}
 instance (Eq a, Ord a) => Eq (KripkeModel a) where
    (KrM u v r) == (KrM u' v' r') = 
@@ -232,6 +239,7 @@ Now we get to the implementation of our translation functions.
 \subsection{Translation functions from $\mathcal{KL}$ to Kripke}
 \textbf{Translation functions for formulas}\\
 As mentioned above, we translate from a fragment of the language of $\mathcal{KL}$ to the language of propositional modal logic. Specifically, only formulas whose atomic subformulas consist of the predicate letter "P", followed by exactly one standard name, are translated; in this case the function \verb?translateFormToKr? replaces all of the atomic subformulas by propositional variables.
+\vspace{10pt}
 \begin{code}
 translateFormToKr :: Formula -> Maybe ModForm
 translateFormToKr (Atom (Pred "P" [StdNameTerm (StdName nx)])) = Just $ P (read (drop 1 nx))    
@@ -248,6 +256,7 @@ translateFormToKr _                              = Nothing
 \item for each world, the propositional variables true at it are the translations of the atomic formulas consisting of "P" followed by a standard name that are true at the world state;
 \item the worlds from within the epistemic state all see each other, and themselves and the actual world sees all other worlds.
 \end{itemize}
+\vspace{10pt}
 \begin{code}
 translateModToKr :: Model -> KripkeModel WorldState
 translateModToKr (Model w e _) = KrM (nub (w:Set.toList e)) val (nub rel) where
@@ -275,6 +284,7 @@ isActuallyAtomic _ = False
 \textbf{Translation functions for formulas}\\
 \verb?translateFormToKL? takes a formula of propositional modal logic and computes the translated $\mathcal{KL}$ formula. Since PML is a propositional logic, we will immitate this in the language of $\mathcal{KL}$ by translating it to a unique corresponding atomic formula in $\mathcal{KL}$.
 
+\vspace{10pt}
 \begin{code}
 -- Translates an a formula of propositional modal logic to a KL formula (predicate logic with knowledge operator).
 translateFormToKL :: ModForm -> Formula
@@ -300,6 +310,7 @@ This gives us a translation function \verb?kripkeToKL? of type \verb?kripkeToKL 
 \textbf{Constraints on translatable Kripke Models}\\
 To ensure that the set of worlds accessible from each world in the universe form an equivalence class with respect to $R$, we require the Kripke model to be transitive ($\forall u,v,w ((Ruv \wedge Rvw) \rightarrow Ruw)$) and euclidean ($\forall u,v,w ((Ruv \wedge Ruw) \rightarrow Rvw)$).\\
 For this, we implemented the following two functions that check whether a Kripke model is transitive and euclidean, respectively:
+\vspace{10pt}
 \begin{code}
 -- Checks if a Kripke model is Euclidean
 isEuclidean :: (Eq a, Ord a) => KripkeModel a -> Bool
@@ -313,6 +324,7 @@ isTransitive = isValidKr (Dis (Neg (Box (P 1))) (Box (Box (P 1))))  -- \neg \Box
 
 We further need the constraint that the world selected to be the actual world in the Kripke Model is in the universe of the given Kripke Model. This is ensured by the \verb?isInUniv? function.
 
+\vspace{10pt}
 \begin{code}
 -- Checks if a world is in the Kripke model’s universe
 isInUniv :: WorldState -> [WorldState] -> Bool
@@ -323,6 +335,7 @@ isInUniv = elem  -- Simple membership test
 \textbf{The main function to translate Kripke Models}
 With this, we can now define the \verb?kripkeToKL? function that maps a Kripke Model of type \verb?KripkeModel WorldState? and a \verb?WorldState? to a \verb?Just? $\mathcal{KL}$? \verb?model? if the Kripke Model is transitive and euclidean and the selected world state is in the universe of the Kripke Model and to \verb?Nothing? otherwise.
 
+\vspace{10pt}
 \begin{code}
 -- Main function: Convert Kripke model to KL model
 kripkeToKL :: KripkeModel WorldState -> WorldState -> Maybe Model

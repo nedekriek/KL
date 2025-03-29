@@ -4,6 +4,7 @@
 
 The syntax of the language $\mathcal{KL}$ is described in \textcite{Lokb} and was first developed by Levesque (\cite{levesque1981}).
 The \verb?SyntaxKL? module establishes the foundation for $\mathcal{KL}$'s syntax, defining the alphabet and grammar used in subsequent semantic evaluation.
+\vspace{10pt}
 \begin{code}
 {-# LANGUAGE InstanceSigs #-}
 module SyntaxKL where
@@ -21,6 +22,7 @@ The language \(\mathcal{KL}\) is built on the following alphabet:
 \end{itemize}
 In this our implementation, standard names are represented as strings (e.g., "n1", "n2") via the \verb?StdName? type, and variables are similarly encoded as strings (e.g., "x", "y") with the \verb?Variable? type, ensuring that we have a distinct yet infinite supplies of each.
 
+\vspace{10pt}
 \begin{code}
 --TODO hide
 arbitraryUpperLetter :: Gen String
@@ -94,6 +96,7 @@ Sentences of $\mathcal{KL}$ can look like this:
 \end{itemize}
 To distinguish primitive terms (those that contain no variable and only a single function symbol) and primitive atoms (those atoms that contain no variables and only standard names as terms) for semantic evaluation, we also define \verb?PrimitiveTerm? and \verb?PrimitiveAtom?.
 
+\vspace{10pt}
 \begin{code}
 -- Defines terms: variables, standard names, or function applications
 data Term = VarTerm Variable   -- A variable (e.g., "x")

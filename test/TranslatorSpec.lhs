@@ -1,4 +1,5 @@
 {-# LANGUAGE NondecreasingIndentation #-}
+\vspace{10pt}
 \begin{code}
 module TranslatorSpec where
 

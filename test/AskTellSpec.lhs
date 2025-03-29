@@ -1,3 +1,4 @@
+\vspace{10pt}
 \begin{code}
 module AskTellSpec where
 
