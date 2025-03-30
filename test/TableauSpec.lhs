@@ -16,6 +16,7 @@ import Test.QuickCheck
 
 spec :: Spec
 spec = do
+
     describe "Tableau Eq Instances" $ do
         it "Node Eq is derived" $
             property $ \f w -> Node (f :: Formula) (w :: TabWorld) == Node f w
@@ -67,6 +68,22 @@ spec = do
                     node = Node (K f) 0
                     expected = Open [Branch [Node f 1] Set.empty []]
                 applyRule node branch `shouldBe` expected
+
+
+        it "applyRule handles nested Exists correctly" $
+            property $ forAll genGroundFormula $ \f -> do
+                let x = Var "x"
+                    y = Var "y"
+                    existsFormula = Exists x (Exists y f)
+                    branch = Branch [] Set.empty []
+                    result = applyRule (Node existsFormula 0) branch
+                case result of
+                    Open [newBranch] -> do
+                        let newNodes = nodes newBranch
+                            usedParams = params newBranch
+                        length newNodes `shouldBe` 1
+                        Set.size usedParams `shouldBe` 1
+                    _ -> fail "Expected Open with one branch"
 
     describe "isClosed" $ do
         it "isClosed detects atomic contradictions in the same world" $
@@ -148,5 +165,61 @@ spec = do
             it "isValid returns False for K(P)" $
                 property $ forAll genGroundAtom $ \a -> do
                     isValid (K (Atom a)) `shouldBe` False
+
+
+        describe "isSatisfiable - Complex Cases" $ do
+        context "Nested Epistemic Operators" $ do
+            it "isSatisfiable returns True for K(P) v ~K(K(P))" $
+                property $ forAll genGroundAtom $ \a -> do
+                    let f = Or (K (Atom a)) (Not (K (K (Atom a))))
+                    isSatisfiable f `shouldBe` True
+
+            it "isSatisfiable returns False for K(P & ~K(P))" $
+                property $ forAll genGroundAtom $ \a -> do
+                    let f = K (Not (Or (Not (Atom a)) (K (Atom a))))
+                    isSatisfiable f `shouldBe` False
+
+            it "isSatisfiable returns True for exists x K(P(x))" $
+                property $ forAll (suchThat genGroundAtom (\(Pred _ ts) -> length ts == 1)) $ \(Pred p ts) -> do
+                    case ts of
+                        [_] -> do
+                            let x = Var "x"
+                                f = Exists x (K (Atom (Pred p [VarTerm x])))
+                            isSatisfiable f `shouldBe` True
+                        _   -> discard  -- Skip cases that don’t match
+
+        context "Mixed Logical Constructs" $ do
+            it "isSatisfiable returns True for (P v Q) & ~K(P) & ~K(Q)" $
+                property $ forAll genGroundAtom $ \a -> forAll genGroundAtom $ \b -> a /= b ==> do
+                    let f = Not (Or (Not (Or (Atom a) (Atom b))) (Or (K (Atom a)) (K (Atom b))))
+                    isSatisfiable f `shouldBe` True
+
+            it "isSatisfiable returns True for K(P) & ~P & (t = t)" $
+                property $ forAll genGroundAtom $ \a -> forAll genGroundTerm $ \t -> do
+                    let f = Not (Or (Not (K (Atom a))) (Or (Atom a) (Not (Equal t t))))
+                    isSatisfiable f `shouldBe` True
+
+    describe "isValid - Complex Cases" $ do
+        context "Nested Epistemic Validities" $ do
+            it "isValid returns True for K(P) v ~K(P)" $
+                property $ forAll genGroundAtom $ \a -> do
+                    let f = Or (K (Atom a)) (Not (K (Atom a)))
+                    isValid f `shouldBe` True
+
+            it "isValid returns False for K(K(P) & ~K(P))" $
+                property $ forAll genGroundAtom $ \a -> do
+                    let f = K (Not (Or (Not (K (Atom a))) (K (Atom a))))
+                    isValid f `shouldBe` False
+
+        context "Complex Mixed Formulas" $ do
+            it "isValid returns False for (P & K(P -> Q)) -> K(Q)" $
+                property $ forAll genGroundAtom $ \a -> forAll genGroundAtom $ \b -> do
+                    let f = Or (Not (Not (Or (Not (Atom a)) (Or (Not (K (Or (Not (Atom a)) (Atom b)))) (K (Atom b)))))) (K (Atom b))
+                    isValid f `shouldBe` False
+
+            it "isValid returns False for (P v K(Q)) -> K(P v Q)" $
+                property $ forAll genGroundAtom $ \a -> forAll genGroundAtom $ \b -> do
+                    let f = Or (Not (Or (Atom a) (K (Atom b)))) (K (Or (Atom a) (Atom b)))
+                    isValid f `shouldBe` False
 \end{code}
 }

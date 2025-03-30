@@ -55,7 +55,7 @@ impl f = Dis (Neg f)
 \end{code}
 \hide{
 \begin{code}
--- this will be useful for testing later
+-- This will be useful for testing later
 instance Arbitrary ModForm where
   arbitrary = resize 16 (sized randomForm) where
     randomForm :: Int -> Gen ModForm
@@ -71,7 +71,7 @@ For some parts of our project, it will be most convenient to let Kripke models h
 
 \vspace{10pt}
 \begin{code}
---definition of models
+-- Definition of Kripke models
 type World a = a
 type Universe a = [World a]
 type Proposition = Int
@@ -84,8 +84,7 @@ data KripkeModel a = KrM
    , valuation :: Valuation a
    , relation :: Relation a}
 
---definition of truth for modal formulas
---truth at a world
+-- Definition of truth for propositional modal logic formulas
 makesTrue :: Eq a => (KripkeModel a, World a) -> ModForm -> Bool
 makesTrue (KrM _ v _, w) (P k)     = k `elem` v w
 makesTrue (m,w)          (Neg f)   = not (makesTrue (m,w) f)
@@ -95,7 +94,7 @@ makesTrue (KrM u v r, w) (Box f)   = all (\w' -> makesTrue (KrM u v r,w') f) (r 
 (!) :: Eq a => Relation a -> World a -> [World a]
 (!) r w = map snd $ filter ((==) w . fst) r
 
---truth in a model
+-- Truth in a model
 trueEverywhere :: Eq a => KripkeModel a -> ModForm -> Bool
 trueEverywhere (KrM x y z) f = all (\w -> makesTrue (KrM x y z, w) f) x
 \end{code}
@@ -113,7 +112,7 @@ createWorldState props =
       termVals = Map.empty                                          -- No term valuations needed here
   in WorldState atomVals termVals
 
--- extract all the propositional variables of a Propositional Modal Logic formula
+-- Extract all the propositional variables of a Propositional Modal Logic formula
 uniqueProps :: ModForm -> [Proposition]
 uniqueProps f = nub (propsIn f)
   where
@@ -259,8 +258,7 @@ translateModToKr (Model w e _) = KrM (nub (w:Set.toList e)) val (nub rel) where
    val = trueAtomicPropsAt
    rel = [(v, v') | v <- Set.toList e, v' <- Set.toList e] ++ [(w,v) | v <- Set.toList e]
 
---the next two are helper functions:
---identifies true atomic formulas at a world that consist of the predicate "P" followed by a standard name
+-- Identifies true atomic formulas at a world that consist of the predicate "P" followed by a standard name
 trueAtomicPropsAt :: WorldState -> [Proposition]
 trueAtomicPropsAt w = 
    map actualAtomToProp trueActualAtoms where
@@ -269,7 +267,7 @@ trueAtomicPropsAt w =
       actualAtomToProp (Pred "P" [StdNameTerm (StdName nx)]) = read (drop 1 nx)
       actualAtomToProp _ = error "actualAtomToProp should only be given atoms of the form 'P(standardname)' as input"
 
---checks whether an atomic formula consists of the predicate "P" followed by a standard name
+-- Checks whether an atomic formula consists of the predicate "P" followed by a standard name
 isActuallyAtomic :: Atom -> Bool
 isActuallyAtomic (Pred "P" [StdNameTerm (StdName _)]) = True
 isActuallyAtomic _ = False
@@ -324,22 +322,18 @@ isInUniv = elem  -- Simple membership test
 \end{code}
 
 \textbf{Main Function to Translate Kripke Models}\\
-With this, we can now define the \verb?kripkeToKL? function that maps a Kripke Model of type \verb?KripkeModel WorldState? and a \verb?WorldState? to a \verb?Just? $\mathcal{KL}$? \verb?Model? if the Kripke Model is transitive and euclidean and the selected world state is in the universe of the Kripke Model and to \verb?Nothing? otherwise.
+With this, we can now define the \verb?kripkeToKL? function that maps a Kripke Model of type \verb?KripkeModel WorldState? and a \verb?WorldState? to a \verb?Just? $\mathcal{KL}$ \verb?Model? if the Kripke Model is transitive and euclidean and the selected world state is in the universe of the Kripke Model and to \verb?Nothing? otherwise.
 
 \vspace{10pt}
 \begin{code}
--- Main function: Convert Kripke model to KL model
+-- Main function: Convert a pointed Kripke model to a KL model
 kripkeToKL :: KripkeModel WorldState -> WorldState -> Maybe Model
 kripkeToKL kr@(KrM univ val rel) w
   | not (isEuclidean kr && isTransitive kr) || not (isInUniv w univ) = Nothing
   | otherwise = Just (Model newWorldState newEpistemicState newDomain)
   where
-    -- New actual world based on valuation of w
-    newWorldState = createWorldState (val w)
-    -- Accessible worlds from w
-    accessibleWorlds = [v | (u, v) <- rel, u == w]
-    -- New epistemic state: one WorldState per accessible world
-    newEpistemicState = Set.fromList [createWorldState (val v) | v <- accessibleWorlds]
-    -- Domain (empty for simplicity)
-    newDomain = Set.empty
+    newWorldState = createWorldState (val w) -- New actual world based on valuation of w
+    accessibleWorlds = [v | (u, v) <- rel, u == w] -- Accessible worlds from w
+    newEpistemicState = Set.fromList [createWorldState (val v) | v <- accessibleWorlds] -- New epistemic state: one WorldState per accessible world
+    newDomain = Set.empty -- Domain (empty for simplicity)
 \end{code}
