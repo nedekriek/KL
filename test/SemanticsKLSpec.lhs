@@ -16,8 +16,6 @@ import Generators  -- helper functions for testing
 \end{code}
 }
 
-
-\vspace{10pt}
 \begin{code}
 spec :: Spec
 spec =  describe "evalTerm - Example Tests" $ do

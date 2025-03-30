@@ -38,12 +38,7 @@ genGroundTerm = sized genTerm
 
 genGroundAtom :: Gen Atom
 genGroundAtom = Pred <$> genUpper<*> listOf genGroundTerm
-\end{code}
-}
 
-
-\vspace{10pt}
-\begin{code}
 genGroundFormula :: Gen Formula
 genGroundFormula = sized genFormula
     where
@@ -54,11 +49,7 @@ genGroundFormula = sized genFormula
                              , Or <$> genFormula (n `div` 2) <*> genFormula (n `div` 2)
                              , K <$> genFormula (n `div` 2)
                              ]
-\end{code}
 
-
-\hide{
-\begin{code}
 -- Generator for a set of StdName values
 genStdNameSet :: Gen (Set StdName)
 genStdNameSet = sized $ \n -> do

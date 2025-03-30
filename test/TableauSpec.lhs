@@ -39,7 +39,7 @@ spec = do
             property $ forAll genGroundAtom $ \a -> do
                 let branch = Branch [] Set.empty []
                     node = Node (Atom a) 0
-                applyRule node branch `shouldBe` Open [Branch (nodes branch) (params branch) (keeps branch ++ [node]) ]
+                applyRule node branch `shouldBe` Open [Branch (nodes branch) (params branch) (retainedSubFormula branch ++ [node]) ]
         it "applyRule splits Or into two branches" $
             property $ forAll genGroundFormula $ \f1 -> forAll genGroundFormula $ \f2 -> do
                 let branch = Branch [] Set.empty []
@@ -149,3 +149,4 @@ spec = do
                 property $ forAll genGroundAtom $ \a -> do
                     isValid (K (Atom a)) `shouldBe` False
 \end{code}
+}
