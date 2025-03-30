@@ -18,11 +18,11 @@ import SemanticsKL
 }
 
 % \subsection{Preliminaries}
-We want to compare $\mathcal{KL}$ and Propositional Modal Logic based on Kripke frames. (Call this PML). For example, we might want to compare the complexity of model checking for $\mathcal{KL}$ and PML. To do this, we need some way of "translating" between formulas of $\mathcal{KL}$ and formulas of PML, and between $\mathcal{KL}$-models and Kripke models. This would allow us to, e.g., (1) take a set of $\mathcal{KL}$-formulas of various lengths and a set of $\mathcal{KL}$-models of various sizes; (2) translate both formulas and models into PML; (3) do model checking for both (i.e.. on the $\mathcal{KL}$ side, and on the PML side); (4) compare how time and memory scale with length of formula.\\
+We want to compare $\mathcal{KL}$ and Propositional Modal Logic based on Kripke frames (denoted PML). For example, we might want to compare the complexity of model checking for $\mathcal{KL}$ and PML. To do this, we need some way of "translating" between formulas of $\mathcal{KL}$ and formulas of PML, and between $\mathcal{KL}$-models and Kripke models. This would allow us to, e.g., (1) take a set of $\mathcal{KL}$-formulas of various lengths and a set of $\mathcal{KL}$-models of various sizes; (2) translate both formulas and models into PML; (3) do model checking for both (i.e.. on the $\mathcal{KL}$ side, and on the PML side); (4) compare how time and memory scale with length of formula.\\
 \noindent Three things need to be borne in mind when designing the translation functions:
 \begin{enumerate}
     \item The language of $\mathcal{KL}$ is predicate logic, plus a knowledge operator $\mathbf{K}$. The language of PML, on the other hand, is propositional logic, plus a knowledge operator. 
-    \item Kripke models are much more general than $\mathcal{KL}$ models.
+    \item Kripke models are much more general than $\mathcal{KL}$ models since epistemic states act as equivalence classes on the accessibility relation.
     \item In Kripke models, there is such a thing as evaluating a formula at various different worlds, whereas this has no equivalent in $\mathcal{KL}$-models. 
 \end{enumerate}
 We deal with the first two points by making some of the translation functions partial; we deal with the third, by, in effect, translating $\mathcal{KL}$ models to pointed Kripke models. Details will be explained in the sections on the respective translation functions below.
@@ -52,6 +52,9 @@ con f g = Neg (Dis (Neg f) (Neg g))
 impl :: ModForm -> ModForm -> ModForm
 impl f = Dis (Neg f)
 
+\end{code}
+\hide{
+\begin{code}
 -- this will be useful for testing later
 instance Arbitrary ModForm where
   arbitrary = resize 16 (sized randomForm) where
@@ -62,7 +65,7 @@ instance Arbitrary ModForm where
                                 <*> randomForm (n `div` 2)
                          , Box <$> randomForm (n `div` 2) ]
 \end{code}
-
+}
 \textbf{Semantics}\\
 For some parts of our project, it will be most convenient to let Kripke models have \verb?WorldState?s (as defined in \verb?SemanticsKL?) as worlds; for others, to have the worlds be \verb?Integer?s. We therefore implement Kripke models as a polymorphic data type, as follows: 
 
@@ -178,14 +181,14 @@ instance Show a => Show (KripkeModel a) where
    show (KrM uni val rel) = "KrM\n" ++ show uni ++ "\n" ++ show [(x, val x) | x <- uni ] ++ "\n" ++ show rel
 \end{code}
 
-Later, we will want to compare models for equality; so we'll also define an \verv?Eq? instance. Comparison for equality will work, at least as long as models are finite. The way this comparison works is by checking that the valuations agree on all worlds in the model. By sorting before checking for equality, we ensure that the order in which worlds appear in the list of worlds representing the universe, the order in which true propositions at a world appear, and the order in which pairs appear in the relation doesn't affect the comparison.
+Later, we will want to compare models for equality; so we'll also define an \verb?Eq? instance. Comparison for equality will work, at least as long as models are finite. The way this comparison works is by checking that the valuations agree on all worlds in the model. By sorting before checking for equality, we ensure that the order in which worlds appear in the list of worlds representing the universe, the order in which true propositions at a world appear, and the order in which pairs appear in the relation doesn't affect the comparison.
 \vspace{10pt}
 \begin{code}
 instance (Eq a, Ord a) => Eq (KripkeModel a) where
    (KrM u v r) == (KrM u' v' r') = 
       (nub. sort) u == (nub. sort) u' && all (\w -> (nub. sort) (v w) ==  (nub. sort) (v' w)) u && (nub. sort) r == (nub. sort) r'
 \end{code}
-\emph{NB:} the following is possible: Two models of type \verb?KripkeModel WorldState?s are equal, we convert both to models of type \verb?KripkeModel Integer?s and the resulting models are not equal. Why is this possible? Because when checking for equality between models of type \verb?KripkeModel WorldState?s, we ignore the order of worlds in the list that defines the universe; but for the conversion to \verb?KripkeModel Integer?, the order matters!
+\emph{NB:} The following is possible: two models of type \verb?KripkeModel WorldState?s are equal, we convert both to models of type \verb?KripkeModel Integer?s and the resulting models are not equal. Why is this possible? Because when checking for equality between models of type \verb?KripkeModel WorldState?s, we ignore the order of worlds in the list that defines the universe; but for the conversion to \verb?KripkeModel Integer?, the order matters!
 
 \subsection{Translation functions: KL to Kripke}
 In our implementation, to do justice to the the fact that translation functions can only sensibly be defined for \emph{some} Kripke models, and \emph{some} $\mathcal{KL}$ formulas, we use the \verb?Maybe? monad provided by Haskell. To do justice to the fact that evaluating in a $\mathcal{KL}$-model is more like evaluating a formula at a specific world in a Kripke model, than like evaluating a formula with respect to a whole Kripke model, we translate from pairs of Kripke models and worlds to $\mathcal{KL}$-models, rather than just from Kripke models to $\mathcal{KL}$-models. Thus, these are the types of our translation functions:
@@ -291,7 +294,7 @@ translateFormToKL (Box form) = K (translateFormToKL form)                       
 \textbf{Translation Functions for Models}\\
 The function \verb?kripkeToKL? takes a Kripke model and a world in its universe, and computes a corresponding $\mathcal{KL}$-model which is satisfiability equivalent with the given world in the given model.\\
 
-\noindent $\mathcal{KL}$ models and Kripke Models can both be used to represent an agent's knowledge, but they do it in a very different way. A $\mathcal{KL}$ model $(e,w)$ is an ordered pair of a \textit{world state} $w$ , representing what is true in the real world, and an \textit{epistemic state} $e$, representing what the agent considers possible. By contrast, a Kripke model $\mathcal{M} = (W,R,V)$ consists of a universe $W$, an accessibility relation $R \subseteq W\times W$, and a valuation function $V: Prop \rightarrow \mathcal{P}(W)$ that assigns to each propositional letter the set of worlds in which it is true.\\
+\noindent $\mathcal{KL}$ models and Kripke Models can both be used to represent an agent's knowledge, but they do it in a very different way. A $\mathcal{KL}$ model $(e,w)$ is an ordered pair of a \textit{world state} $w$, representing what is true in the real world, and an \textit{epistemic state} $e$, representing what the agent considers possible. By contrast, a Kripke model $\mathcal{M} = (W,R,V)$ consists of a universe $W$, an accessibility relation $R \subseteq W\times W$, and a valuation function $V: Prop \rightarrow \mathcal{P}(W)$ that assigns to each propositional letter the set of worlds in which it is true.\\
 
 There are two key differences between $\mathcal{KL}$ models and Kripke Models. First, $\mathcal{KL}$ models have a fixed actual world and can only evaluate non-modal formulas at this particular world while Kripke Models can evaluate what is true at each of the worlds in their Universe. Second, the \textit{world states} in the \textit{epistemic state} of a $\mathcal{KL}$ model form an equivalence class in the sense that no matter how many nested \textit{K-Operators} there are in a formula, each level is evaluated on the whole epistemic state. Among other things, this implies that positive introspection ($\mathbf{K}\varphi \rightarrow \mathbf{K}\mathbf{K}\varphi$) and negative introspection ($\neg\mathbf{K} \varphi \rightarrow \mathbf{K}\neg\mathbf{K}\varphi$) are valid in $\mathcal{KL}$. Informally, positive introspection says that if an agent knows \( \varphi \), then they know that they know \( \varphi \) and negative introspection says that if an agent does not know \( \varphi \), then they know that they do not know \( \varphi \). In Kripke models, however, this is not generally the case and the worlds accessible from each world do not always form an equivalence class under the accessibility relation $R$.\\
 \\
@@ -300,7 +303,7 @@ We address the first difference by not translating the entire Kripke Model but b
 This gives us a translation function \verb?kripkeToKL? of type\\ \verb?kripkeToKL :: KripkeModel WorldState -> WorldState -> Maybe Model? \\
 
 \textbf{Constraints on Translatable Kripke Models}\\
-To ensure that the set of worlds accessible from each world in the universe form an equivalence class with respect to $R$, we require the Kripke model to be transitive ($\forall u,v,w ((Ruv \wedge Rvw) \rightarrow Ruw)$) and euclidean ($\forall u,v,w ((Ruv \wedge Ruw) \rightarrow Rvw)$).\\
+To ensure that the set of worlds accessible from each world in the universe form an equivalence class with respect to $R$, we require the Kripke model to be transitive ($\forall u,v,w ((Ruv \wedge Rvw) \rightarrow Ruw)$) and euclidean ($\forall u,v,w ((Ruv \wedge Ruw) \rightarrow Rvw)$). 
 For this, we implement the following two functions that check whether a Kripke model is transitive and euclidean, respectively:
 \vspace{10pt}
 \begin{code}
