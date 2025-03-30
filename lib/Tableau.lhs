@@ -34,6 +34,7 @@ With $\mathcal{KL}$ we have to make sure that the following to things are handle
 \end{itemize}
 
 First, we define new types for the tableau node and branch: A \verb?Node? pairs formulas with world identifiers (of type \verb?TabWorld?), and a \verb?Branch? tracks nodes, used standard names, and eliminated nodes of atoms. The inclusion of \verb?eliminatedAtomicNodes? is important for the tableau expansion process, as it allows us to keep track of the atomic formulas that could be used to close a branch (see \verb?isClosed?) while differentiating from formula that can be further processed (see \verb?applyRule?).
+\vspace{10pt}
 \begin{code}
 type TabWorld = Int    -- World identifier (0, 1, ...)
 
@@ -68,7 +69,7 @@ instance Arbitrary Branch where
 }
 
 \textbf{Tableau Rules}\\
-Rules decompose formulas, producing either a closed branch (contradictory) or open branches (consistent). The function\verb?applyRule? implements these rules, handling logical and epistemic operators. The rules are applied iteratively to unexpanded nodes until all branches are either closed or fully expanded (open).
+Rules decompose formulas, producing either a closed branch (contradictory) or open branches (consistent). The function \verb?applyRule? implements these rules, handling logical and epistemic operators. The rules are applied iteratively to unexpanded nodes until all branches are either closed or fully expanded (open).
 \vspace{10pt}
 \begin{code}
 data RuleResult = Closed | Open [Branch] deriving (Eq, Show)

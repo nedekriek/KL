@@ -1,6 +1,6 @@
 \section{Ask and Tell Operators}\label{sec:AskTell}
 
-A knowledge base is a collection of symbolic structures representing an agent's beliefs, and idealy, we can then reason using these encoded beliefs.
+A knowledge base is a collection of symbolic structures representing an agent's beliefs, and ideally, we can then reason using these encoded beliefs.
 To use $\mathcal{KL}$ to interact with a knowledge base, \textcite{Lokb} defines two operators on epistemic states: $\emph{ask}$ and $\emph{tell}$. Informally, $\emph{ask}$ is used to determine if a sentence is known to a knowledge base, whereas $\emph{tell}$ is used to add a sentence to the knowledge base. Since epistemic states are sets of possible worlds, the more known sentences there are, the smaller the set of possible worlds. For this purpose, an $\emph{initial}$ epistemic state is also defined to contain all possible worlds given a finite set of atoms and terms.
 
 \hide{
