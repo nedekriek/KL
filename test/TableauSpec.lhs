@@ -149,3 +149,4 @@ spec = do
                 property $ forAll genGroundAtom $ \a -> do
                     isValid (K (Atom a)) `shouldBe` False
 \end{code}
+}
