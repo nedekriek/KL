@@ -86,7 +86,7 @@ Sentences of $\mathcal{KL}$ can look like this:
     <wff> -> <knowledge-wff> -> "K" <wff>
           -> "K" <existential-wff> -> "K" "\exists" "x" "." <wff>
           -> "K" "\exists" "x" "." "Teach" "(" "x" "," "sam" ")"
-    \end{verbatim}
+    \end{verbatim} 
     \item \(\neg \boldsymbol{K} Teach(tina, sue)\):
     \begin{verbatim}
     <wff> -> <negated-wff> -> "\neg" <wff>
