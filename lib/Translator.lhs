@@ -18,13 +18,13 @@ import SemanticsKL
 }
 
 % \subsection{Preliminaries}
-We want to compare $\mathcal{KL}$ and Propositional Modal Logic based on Kripke frames (denoted PML). For example, we might want to compare the complexity of model checking for $\mathcal{KL}$ and PML. To do this, we need some way of "translating" between formulas of $\mathcal{KL}$ and formulas of PML, and between $\mathcal{KL}$-models and Kripke models. This would allow us to, e.g., (1) take a set of $\mathcal{KL}$-formulas of various lengths and a set of $\mathcal{KL}$-models of various sizes; (2) translate both formulas and models into PML; (3) do model checking for both (i.e. on the $\mathcal{KL}$ side, and on the PML side).\\
+We want to compare $\mathcal{KL}$ and Propositional Modal Logic based on Kripke frames (denoted PML). For example, we might want to compare the complexity of model checking for $\mathcal{KL}$ and PML. To do this, we need some way of "translating" between formulas of $\mathcal{KL}$ and formulas of PML, and between $\mathcal{KL}$-models and Kripke models. This would allow us to, e.g., (1) take a set of $\mathcal{KL}$-formulas of various lengths and a set of $\mathcal{KL}$-models of various sizes; (2) translate both formulas and models into PML; (3) do model checking for both (i.e.. on the $\mathcal{KL}$ side, and on the PML side); (4) compare how time and memory scale with length of formula.\\
 \noindent Three things need to be borne in mind when designing the translation functions:
-\begin{itemize}
+\begin{enumerate}
     \item The language of $\mathcal{KL}$ is predicate logic, plus a knowledge operator $\mathbf{K}$. The language of PML, on the other hand, is propositional logic, plus a knowledge operator. 
     \item Kripke models are much more general than $\mathcal{KL}$ models since epistemic states act as equivalence classes on the accessibility relation.
     \item In Kripke models, there is such a thing as evaluating a formula at various different worlds, whereas this has no equivalent in $\mathcal{KL}$-models. 
-\end{itemize}
+\end{enumerate}
 We deal with the first two points by making some of the translation functions partial; we deal with the third, by, in effect, translating $\mathcal{KL}$ models to pointed Kripke models. Details will be explained in the sections on the respective translation functions below.
 
 \subsection{Syntax and Semantics of PML}
@@ -55,7 +55,7 @@ impl f = Dis (Neg f)
 \end{code}
 \hide{
 \begin{code}
--- this will be useful for testing later
+-- This will be useful for testing later
 instance Arbitrary ModForm where
   arbitrary = resize 16 (sized randomForm) where
     randomForm :: Int -> Gen ModForm
@@ -71,7 +71,7 @@ For some parts of our project, it will be most convenient to let Kripke models h
 
 \vspace{10pt}
 \begin{code}
---definition of models
+-- Definition of models
 type World a = a
 type Universe a = [World a]
 type Proposition = Int
@@ -84,8 +84,8 @@ data KripkeModel a = KrM
    , valuation :: Valuation a
    , relation :: Relation a}
 
---definition of truth for modal formulas
---truth at a world
+-- Definition of truth for modal formulas
+-- Truth at a world
 makesTrue :: Eq a => (KripkeModel a, World a) -> ModForm -> Bool
 makesTrue (KrM _ v _, w) (P k)     = k `elem` v w
 makesTrue (m,w)          (Neg f)   = not (makesTrue (m,w) f)
@@ -95,7 +95,7 @@ makesTrue (KrM u v r, w) (Box f)   = all (\w' -> makesTrue (KrM u v r,w') f) (r 
 (!) :: Eq a => Relation a -> World a -> [World a]
 (!) r w = map snd $ filter ((==) w . fst) r
 
---truth in a model
+-- Truth in a model
 trueEverywhere :: Eq a => KripkeModel a -> ModForm -> Bool
 trueEverywhere (KrM x y z) f = all (\w -> makesTrue (KrM x y z, w) f) x
 \end{code}
@@ -113,7 +113,7 @@ createWorldState props =
       termVals = Map.empty                                          -- No term valuations needed here
   in WorldState atomVals termVals
 
--- extract all the propositional variables of a Propositional Modal Logic formula
+-- Extract all the propositional variables of a Propositional Modal Logic formula
 uniqueProps :: ModForm -> [Proposition]
 uniqueProps f = nub (propsIn f)
   where
@@ -145,7 +145,7 @@ Sometimes it will be useful to convert between models of type \verb?KripkeModel 
 \begin{code}
 translateKrToKrInt :: KripkeModel WorldState -> KripkeModel Integer
 translateKrToKrInt (KrM u v r) = KrM u' v' r' where
-   ur = nub u -- the function first gets rid of duplicate worlds in the model
+   ur = nub u -- The function first gets rid of duplicate worlds in the model
    u' = take (length ur) [0..] 
    v' n = v (intToWorldState ur n) where
       intToWorldState :: Universe WorldState -> Integer -> WorldState
@@ -259,8 +259,8 @@ translateModToKr (Model w e _) = KrM (nub (w:Set.toList e)) val (nub rel) where
    val = trueAtomicPropsAt
    rel = [(v, v') | v <- Set.toList e, v' <- Set.toList e] ++ [(w,v) | v <- Set.toList e]
 
---the next two are helper functions:
---identifies true atomic formulas at a world that consist of the predicate "P" followed by a standard name
+--The next two are helper functions:
+--Identifies true atomic formulas at a world that consist of the predicate "P" followed by a standard name
 trueAtomicPropsAt :: WorldState -> [Proposition]
 trueAtomicPropsAt w = 
    map actualAtomToProp trueActualAtoms where
@@ -293,9 +293,13 @@ translateFormToKL (Box form) = K (translateFormToKL form)                       
 
 \textbf{Translation Functions for Models}\\
 The function \verb?kripkeToKL? takes a Kripke model and a world in its universe, and computes a corresponding $\mathcal{KL}$-model which is satisfiability equivalent with the given world in the given model.\\
+
 \noindent $\mathcal{KL}$ models and Kripke Models can both be used to represent an agent's knowledge, but they do it in a very different way. A $\mathcal{KL}$ model $(e,w)$ is an ordered pair of a \textit{world state} $w$, representing what is true in the real world, and an \textit{epistemic state} $e$, representing what the agent considers possible. By contrast, a Kripke model $\mathcal{M} = (W,R,V)$ consists of a universe $W$, an accessibility relation $R \subseteq W\times W$, and a valuation function $V: Prop \rightarrow \mathcal{P}(W)$ that assigns to each propositional letter the set of worlds in which it is true.\\
+
 There are two key differences between $\mathcal{KL}$ models and Kripke Models. First, $\mathcal{KL}$ models have a fixed actual world and can only evaluate non-modal formulas at this particular world while Kripke Models can evaluate what is true at each of the worlds in their Universe. Second, the \textit{world states} in the \textit{epistemic state} of a $\mathcal{KL}$ model form an equivalence class in the sense that no matter how many nested \textit{K-Operators} there are in a formula, each level is evaluated on the whole epistemic state. Among other things, this implies that positive introspection ($\mathbf{K}\varphi \rightarrow \mathbf{K}\mathbf{K}\varphi$) and negative introspection ($\neg\mathbf{K} \varphi \rightarrow \mathbf{K}\neg\mathbf{K}\varphi$) are valid in $\mathcal{KL}$. Informally, positive introspection says that if an agent knows \( \varphi \), then they know that they know \( \varphi \) and negative introspection says that if an agent does not know \( \varphi \), then they know that they do not know \( \varphi \). In Kripke models, however, this is not generally the case and the worlds accessible from each world do not always form an equivalence class under the accessibility relation $R$.\\
+\\
 We address the first difference by not translating the entire Kripke Model but by selecting an actual world in the Kripke model and then translating the submodel point generated at this world into a $\mathcal{KL}$ model. By design, the selected actual world is translated to the actual \textit{world state} and the set of worlds accessible from the selected world is translated to the \textit{epistemic state}. Further, we restrict the translation function to only translate the fragment of Kripke Models where the set of worlds accessible from each world in the universe form an equivalence class with respect to $R$.\\
+\\
 This gives us a translation function \verb?kripkeToKL? of type\\ \verb?kripkeToKL :: KripkeModel WorldState -> WorldState -> Maybe Model? \\
 
 \textbf{Constraints on Translatable Kripke Models}\\
@@ -324,22 +328,18 @@ isInUniv = elem  -- Simple membership test
 \end{code}
 
 \textbf{Main Function to Translate Kripke Models}\\
-With this, we can now define the \verb?kripkeToKL? function that maps a Kripke Model of type \verb?KripkeModel WorldState? and a \verb?WorldState? to a \verb?Just? $\mathcal{KL}$? \verb?Model? if the Kripke Model is transitive and euclidean and the selected world state is in the universe of the Kripke Model and to \verb?Nothing? otherwise.
+With this, we can now define the \verb?kripkeToKL? function that maps a Kripke Model of type \verb?KripkeModel WorldState? and a \verb?WorldState? to a \verb?Just? $\mathcal{KL}$ \verb?Model? if the Kripke Model is transitive and euclidean and the selected world state is in the universe of the Kripke Model and to \verb?Nothing? otherwise.
 
 \vspace{10pt}
 \begin{code}
--- Main function: Convert Kripke model to KL model
+-- Main function: Convert a pointed Kripke model to a KL model
 kripkeToKL :: KripkeModel WorldState -> WorldState -> Maybe Model
 kripkeToKL kr@(KrM univ val rel) w
   | not (isEuclidean kr && isTransitive kr) || not (isInUniv w univ) = Nothing
   | otherwise = Just (Model newWorldState newEpistemicState newDomain)
   where
-    -- New actual world based on valuation of w
-    newWorldState = createWorldState (val w)
-    -- Accessible worlds from w
-    accessibleWorlds = [v | (u, v) <- rel, u == w]
-    -- New epistemic state: one WorldState per accessible world
-    newEpistemicState = Set.fromList [createWorldState (val v) | v <- accessibleWorlds]
-    -- Domain (empty for simplicity)
-    newDomain = Set.empty
+    newWorldState = createWorldState (val w) -- New actual world based on valuation of w
+    accessibleWorlds = [v | (u, v) <- rel, u == w] -- Accessible worlds from w
+    newEpistemicState = Set.fromList [createWorldState (val v) | v <- accessibleWorlds] -- New epistemic state: one WorldState per accessible world
+    newDomain = Set.empty -- Domain (empty for simplicity)
 \end{code}

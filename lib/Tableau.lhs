@@ -34,7 +34,6 @@ With $\mathcal{KL}$ we have to make sure that the following to things are handle
 \end{itemize}
 
 First, we define new types for the tableau node and branch: A \verb?Node? pairs formulas with world identifiers (of type \verb?TabWorld?), and a \verb?Branch? tracks nodes, used standard names, and eliminated nodes of atoms. The inclusion of \verb?eliminatedAtomicNodes? is important for the tableau expansion process, as it allows us to keep track of the atomic formulas that could be used to close a branch (see \verb?isClosed?) while differentiating from formula that can be further processed (see \verb?applyRule?).
-\vspace{10pt}
 \begin{code}
 type TabWorld = Int    -- World identifier (0, 1, ...)
 
@@ -69,7 +68,7 @@ instance Arbitrary Branch where
 }
 
 \textbf{Tableau Rules}\\
-Rules decompose formulas, producing either a closed branch (contradictory) or open branches (consistent). The function \verb?applyRule? implements these rules, handling logical and epistemic operators. The rules are applied iteratively to unexpanded nodes until all branches are either closed or fully expanded (open).
+Rules decompose formulas, producing either a closed branch (contradictory) or open branches (consistent). The function\verb?applyRule? implements these rules, handling logical and epistemic operators. The rules are applied iteratively to unexpanded nodes until all branches are either closed or fully expanded (open).
 \vspace{10pt}
 \begin{code}
 data RuleResult = Closed | Open [Branch] deriving (Eq, Show)
@@ -91,10 +90,14 @@ applyRule (Node f w) branch = case f of
   Not (K f') -> Open [expandKNot f' w branch]     --   Negated knowledge
   Or f1 f2 -> Open [ Branch (Node f1 w : nodes branch) (params branch) (eliminatedAtomicNodes branch)
                    , Branch (Node f2 w : nodes branch) (params branch) (eliminatedAtomicNodes branch)] -- Disjunction rule, split the branch
-  Exists x f' ->   -- Existential rule: \exists x f': add f'[x/a] with fresh parameter a
-    let newParam = head (newParams (params branch))
-        newBranch = Branch (Node (subst x newParam f') w : nodes branch)
-                          (Set.insert newParam (params branch)) (eliminatedAtomicNodes branch)
+  Exists x f' ->   -- Existential rule: ∃x f': add f'[x/a] with fresh parameter a
+    let newParamsList = newParams (params branch)
+        newParam = case newParamsList of
+            (p:_) -> p -- Safely extract the first fresh parameter
+            [] -> error "newParams returned an empty list, which should never happen"
+        substitutedFormula = subst x newParam f' -- Substitute x with the fresh parameter
+        newBranch = Branch (Node substitutedFormula w : nodes branch)
+                           (Set.insert newParam (params branch)) (eliminatedAtomicNodes branch)
     in Open [newBranch]
   K f' -> Open [expandK f' w branch] -- Knowledge rule, add formula to a new world
 
