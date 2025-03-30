@@ -16,7 +16,6 @@ import SemanticsKL
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Test.QuickCheck
-import Translator (impl)
 
 \end{code}
 }

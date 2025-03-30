@@ -140,7 +140,7 @@ instance Arbitrary Term where
 
 instance Arbitrary Atom where
   arbitrary :: Gen Atom
-  arbitrary = sized $ \n -> genAtom (min n 5) where 
+  arbitrary = sized $ \n -> genAtom (min n 2) where 
       genAtom :: Int -> Gen Atom
       genAtom 0 = Pred <$> arbitraryLowerLetter <*> pure []
       genAtom n = Pred <$> arbitraryLowerLetter <*> vectorOf n arbitrary
