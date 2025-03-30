@@ -34,10 +34,13 @@ spec =  describe "evalTerm - Example Tests" $ do
         describe "evalTerm - Property Tests" $ do
             it "evalTerm errors for all variables passed" $ do
                 property $ \ w x -> evaluate (evalTerm w (VarTerm x)) `shouldThrow` anyException
+\end{code}
+\hide{
+\begin{code}
             it "evalTerm returns the StdName for StdNameTerm" $ do
                 property $ \w n -> evalTerm w (StdNameTerm n) == n
 \end{code}
-
+}
 \hide{
 \begin{code}
         describe "isGround - Example Tests" $ do
@@ -116,13 +119,16 @@ spec =  describe "evalTerm - Example Tests" $ do
             context "isTrueModel returns true for  validities when atoms are ground" $ do
                 it "isTrueModel returns true for  P -> ~~ P" $ do
                     property $ \m -> isTrueModel m (Or (Not p) (Not (Not p))) `shouldBe` True
+\end{code}
+\hide{
+\begin{code}   
                 it "isTrueModel returns true for  P(t) -> ~~ P(t)" $ do
-                    property $ \m -> isTrueModel m (Or (Not pt) (Not (Not pt))) `shouldBe` True
+                    property $ \m -> isTrueModel m (Or (Not pt) (Not (Not pt))) `shouldBe` True       
                 it "isTrueModel errors for P(x) -> ~~ P(x)" $ do
                     property $ \m -> evaluate (isTrueModel m (Or (Not px) (Not (Not px)))) `shouldThrow` anyException
 
 \end{code}
-
+}
 \hide{
 \begin{code}
                 it "isTrueModel returns true for  t=t" $ do

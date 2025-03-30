@@ -123,8 +123,6 @@ The function checks for conflicts in two contexts: the actual world (w=0), where
 For example, it flags a branch as closed if $P(n1)$ is true in world 1 but false in world 2, reflecting a violation of knowledge constraints. 
 A branch closes if any such contradiction - among atoms or equalities - is found in the same or related worlds, ensuring the tableau accurately tests satisfiability. 
 The function returns \verb?True? for a closed branch, indicating an unsatisfiable state, and \verb?False? for an open branch, suggesting a potentially satisfiable interpretation.
-This function reflects the semantic requirement that a world state $w$ in an epistemic state $e$ can not assign both \verb?True? and \verb?False? to the same ground atom or equality.
-
 \vspace{10pt}
 \begin{code}
 -- Checks if a branch is closed (contradictory) by detecting conflicting atoms or equalities.
