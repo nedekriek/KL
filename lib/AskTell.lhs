@@ -28,7 +28,7 @@ When implementing $\emph{ask}$ in Haskell, we must take into account that a doma
 -- ask (Definition 5.2.1)
 ask :: Set.Set StdName -> EpistemicState -> Formula -> Bool
 ask d e alpha | Set.null e = False
-              | otherwise = satisfiesModel newModel (K alpha) where
+              | otherwise = isTrueModel newModel (K alpha) where
               newModel = Model {actualWorld = (Set.findMin e), epistemicState = e, domain = d}
 
 \end{code}
@@ -39,7 +39,7 @@ We can simplify this into an \verb?askModel? function that takes only a model an
 \begin{code}
 askModel :: Model -> Formula -> Bool
 askModel m alpha |  Set.null (epistemicState m) = False
-             |  otherwise = satisfiesModel m (K alpha)
+             |  otherwise = isTrueModel m (K alpha)
 
 \end{code}
 
@@ -53,7 +53,7 @@ Again, we run into the issue that "$\models$" requires a domain, and so a domain
 -- tell operation
 tell :: Set.Set StdName -> EpistemicState -> Formula -> EpistemicState
 tell d e alpha = Set.filter filterfunc e where
-    filterfunc = (\w -> satisfiesModel (Model {actualWorld = w, epistemicState = e, domain = d}) alpha)
+    filterfunc = (\w -> isTrueModel (Model {actualWorld = w, epistemicState = e, domain = d}) alpha)
 \end{code}
 
 We can again simplify to a function \verb?tellModel?, that takes as input a model and formula and produces a model with a modified epistemic state.
@@ -62,7 +62,7 @@ We can again simplify to a function \verb?tellModel?, that takes as input a mode
 \begin{code}
 tellModel :: Model -> Formula -> Model
 tellModel m alpha = Model {actualWorld = actualWorld m, epistemicState = Set.filter filterfunc  (epistemicState m), domain = domain m} where
-    filterfunc = (\w -> satisfiesModel (Model {actualWorld = w, epistemicState = epistemicState m, domain = domain m}) alpha)
+    filterfunc = (\w -> isTrueModel (Model {actualWorld = w, epistemicState = epistemicState m, domain = domain m}) alpha)
 
 \end{code}
 
