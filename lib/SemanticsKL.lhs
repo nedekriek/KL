@@ -188,24 +188,24 @@ instance Arbitrary Model where
 }
 
 A \verb?Model? consists of an actual world, an epistemic state, and a domain. 
-The function \verb?satisfiesModel? implements $\mathcal{KL}$'s satisfaction relation.
+The function \verb?isTrueModel? implements $\mathcal{KL}$'s satisfaction relation.
 
 \vspace{10pt}
 \begin{code}
 -- Checks if a formula is true in a model
-satisfiesModel :: Model -> Formula -> Bool
-satisfiesModel (Model w _ _) (Atom (Pred p terms)) =
+isTrueModel :: Model -> Formula -> Bool
+isTrueModel (Model w _ _) (Atom (Pred p terms)) =
   if all isGround terms
     then Map.findWithDefault False (Pred p terms) (atomValues w)
-    else error "Non-ground atom in satisfiesModel!"
-satisfiesModel (Model w _ _) (Equal t1 t2) =
+    else error "Non-ground atom in isTrueModel!"
+isTrueModel (Model w _ _) (Equal t1 t2) =
   if isGround t1 && isGround t2
     then evalTerm w t1 == evalTerm w t2
-    else error "Non-ground equality in satisfiesModel!"
-satisfiesModel (Model w e d) (Not f) = not (satisfiesModel (Model w e d) f)
-satisfiesModel (Model w e d) (Or f1 f2) = satisfiesModel (Model w e d) f1 || satisfiesModel (Model w e d) f2
-satisfiesModel (Model w e d) (Exists x f) = any (\n -> satisfiesModel (Model w e d) (subst x n f)) (Set.toList d)
-satisfiesModel (Model _ e d) (K f) = all (\w' -> satisfiesModel (Model w' e d) f) e
+    else error "Non-ground equality in isTrueModel!"
+isTrueModel (Model w e d) (Not f) = not (isTrueModel (Model w e d) f)
+isTrueModel (Model w e d) (Or f1 f2) = isTrueModel (Model w e d) f1 || isTrueModel (Model w e d) f2
+isTrueModel (Model w e d) (Exists x f) = any (\n -> isTrueModel (Model w e d) (subst x n f)) (Set.toList d)
+isTrueModel (Model _ e d) (K f) = all (\w' -> isTrueModel (Model w' e d) f) e
 
 \end{code}
 
@@ -217,11 +217,11 @@ Building on this, we implement a function \verb?checkModel? that checks whether 
 \begin{code}
 -- Checks if a formula holds in a model by grounding it
 checkModel :: Model -> Formula -> Bool
-checkModel m phi = all (satisfiesModel m) (groundFormula phi (domain m))
+checkModel m phi = all (isTrueModel m) (groundFormula phi (domain m))
 \end{code}
 
 Note that we use the function \verb?groundFormula? here. 
-Since we implemented \verb?satisfiesModel? such that it assumes ground formulas or errors out, we decided to handle free variables by grounding formulas, given a set of free standard names to substitute. 
+Since we implemented \verb?isTrueModel? such that it assumes ground formulas or errors out, we decided to handle free variables by grounding formulas, given a set of free standard names to substitute. 
 Alternatives would be to throw an error or always substitute the same standard name. The implementation that we chose is computationally expensive. However, we chose because, (i), it is more flexible and allows for more varied usage, and, (ii), it is the most faithful to the theory as described in \textcite{Lokb}.
 We implement \verb?groundFormula? as follows:
 

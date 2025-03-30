@@ -105,14 +105,14 @@ spec =  describe "translateFormToKr" $ do
                     m <- resize 6 arbitrary
                     f <- resize 6 genTransFormula
                     return (m, f)
-                    ) $ \(Model w e d, f) -> (Model w e d `satisfiesModel` f) <==> ((translateModToKr (Model w e d), w) `makesTrue` fromJust (translateFormToKr f))
+                    ) $ \(Model w e d, f) -> (Model w e d `isTrueModel` f) <==> ((translateModToKr (Model w e d), w) `makesTrue` fromJust (translateFormToKr f))
                     
             it "if a formula is true at a world and Kripke model, then it should be true at the corresponding KL model, and vice versa" $ do
                 property $ forAll (do
                     (m, w) <- genTransEucKripkeWithWorld `suchThat` (\(m, w) -> w `elem` universe m)
                     g <- arbitrary 
                     return (m, w, g)
-                    ) $ \(m, w, g) ->  (m, w) `makesTrue` g <==> (fromJust (kripkeToKL m w) `satisfiesModel` translateFormToKL g)
+                    ) $ \(m, w, g) ->  (m, w) `makesTrue` g <==> (fromJust (kripkeToKL m w) `isTrueModel` translateFormToKL g)
 
         describe "trueEverywhere" $ do
             let ww1 = mkWorldState [(PPred "P" [StdName "n1"], True)] []
@@ -407,7 +407,7 @@ testTruthPres :: KripkeModel WorldState -> WorldState -> ModForm -> Maybe Bool
 testTruthPres km w g = 
     case kripkeToKL km w of
     Nothing -> Nothing
-    Just klModel -> Just $ makesTrue (km, w) g == satisfiesModel klModel (translateFormToKL g)
+    Just klModel -> Just $ makesTrue (km, w) g == isTrueModel klModel (translateFormToKL g)
 
 dia :: ModForm -> ModForm
 dia f = Neg (Box (Neg f))

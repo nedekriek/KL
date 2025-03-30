@@ -28,7 +28,7 @@ let m = Model ws (Set.singleton ws) (Set.fromList [StdName "n1"])
 let f = Atom (Pred "P" [StdNameTerm (StdName "n1")])
 ```
 
-To check if the formula holds use `checkModel m f`, which should return `True` since `P(n1)` is true in the model. Alternatively, evaluate satisfiability with `satisfiesModel m f`.
+To check if the formula holds use `checkModel m f`, which should return `True` since `P(n1)` is true in the model. Alternatively, evaluate satisfiability with `isTrueModel m f`.
 
 #### Satisfiability and Validity Checking Example Usage
 
