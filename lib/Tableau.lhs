@@ -1,12 +1,13 @@
 \section{Tableau-Based Satisfiability and Validity Checking in \texorpdfstring{$\mathcal{KL}$}{KL}}\label{subsec:tableau}
 
-Note: For the Beta-version, we omitted function symbol evaluation, limiting the satisfiability and validity checking to a propositional-like subset. 
+Note: due to time constraints we omitted function symbol evaluation, limiting the satisfiability and validity checking to a propositional-like subset of $\mathcal{KL}$. 
 \\
-This subsection implements satisfiability and validity checkers for  $\mathcal{KL}$ using the tableau method, a systematic proof technique that constructs a tree to test formula satisfiability by decomposing logical components and exploring possible models.
+This section implements satisfiability and validity checkers for $\mathcal{KL}$ using the tableau method --- a systematic proof technique that constructs a tree to test formula satisfiability by decomposing logical components and exploring possible models.
 In $\mathcal{KL}$, this requires handling both first-order logic constructs (quantifiers, predicates) and the epistemic operator $\mathbf{K}$, which requires tracking possible worlds.
-Note that the full first-order epistemic logic with infinite domains is in general undecidable (\cite{Lokb} p. 173), so we adopt a semi-decision procedure: it terminates with "satisfiable" if an open branch is found but may loop infinitely for unsatisfiable cases due to the infinite domain $\mathcal{N}$.
-The \verb?Tableau? module builds on \verb?SyntaxKL? and \verb?SemanticsKL?:
-\vspace{10pt}
+Full first-order epistemic logic with infinite domains is in general undecidable (\cite{Lokb} p. 173), so we adopt a semi-decision procedure: terminating with "satisfiable" if an open branch is found but may loop infinitely for unsatisfiable cases due to the infinite domain $\mathcal{N}$.
+The \verb?Tableau? module builds on \verb?SyntaxKL? and \verb?SemanticsKL?/ modules.
+
+\hide{
 \begin{code}
 module Tableau where
 
@@ -15,41 +16,43 @@ import SemanticsKL
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Test.QuickCheck
+import Translator (impl)
 
 \end{code}
-
+}
 \textbf{Tableau Approach}\\
 The tableau method tests satisfiability as follows:  
 A formula $\alpha$ is satisfiable if there exists an epistemic state $e$ and a world $w\in e$ such that $e,w \models \alpha$.
     The tableau starts with $\alpha$ and expands it, seeking an open (non-contradictory) branch representing a model.
 A formula $\alpha$ is valid if it holds in all possible models $(e,w \models \alpha$ for all $e,w)$.
     We test validity by checking if $\neg \alpha$ unsatisfiable (i.e., all tableau branches close).
-For $\mathcal{KL}$ we have to handle two things:
+
+With $\mathcal{KL}$ we have to handle two things:
 \begin{itemize}
     \item Infinite domains: $\mathcal{KL}$ assumes a countably infinite set of standard names (\cite{Lokb}, p.23).
     The tableau method handles this via parameters (free variables) and $\delta$-rules (existential instantiation), introducing new names as needed.
-    This means that we use a countably infinite supply of parameters (e.g., a1, a2,...) instead of enumerating all standard names.
+    This means that we use a countably infinite supply of parameters (e.g., n1, n2,...) instead of enumerating all standard names.
     \item Modal handling: The $\mathbf{K}$-operator requires branching over possible worlds within an epistemic state.
 \end{itemize}
 
-First, we define new types for the tableau node and branch: A \verb?Node? pairs formulas with world identifiers, and a \verb?Branch? tracks nodes and used parameters.
-\vspace{10pt}
+First, we define new types for the tableau node and branch: A \verb?Node? pairs formulas with world identifiers, and a \verb?Branch? tracks nodes, used parameters, and processed subformula of ancestor nodes. The inclusion of \verb?retainedSubFormula? is important for the tableau expansion process, as it allows us to keep track of the formulas that could be used to close a branch (see \verb?isClosed?) while differentiating from formula that can be further processed (see \verb?applyRule?).
 \begin{code}
+type TabWorld = Int    -- World identifier (0, 1, ...)
 
--- A tableau node: formula labeled with a world
 data Node = Node Formula TabWorld deriving (Eq, Show)
 
+data Branch = Branch { nodes :: [Node],  params :: Set StdName, retainedSubFormula :: [Node] } deriving (Eq, Show)
+
+\end{code}
+
+\hide{
+\begin{code}
 -- Arbitrary instance for Node
 instance Arbitrary Node where
   arbitrary = do
     formula <- arbitrary
     world <- choose (0, 10) -- Example range for world identifiers
     return $ Node formula world
-
-type TabWorld = Int    -- World identifier (0, 1, ...)
-
--- A tableau branch: list of nodes and set of used parameters
-data Branch = Branch { nodes :: [Node],  params :: Set StdName, keeps :: [Node] } deriving (Eq, Show)
 
 -- Arbitrary instance for Branch
 instance Arbitrary Branch where
@@ -61,85 +64,79 @@ instance Arbitrary Branch where
                 Set.fromList <$> vectorOf size arbitrary
         ns <- resize 10 (listOf arbitrary) :: Gen [Node] -- Limit to 0-5 nodes
         ps <- stdNameSetForBranch
-        ks <- resize 10 (listOf arbitrary) :: Gen [Node] -- Generate a list of Nodes for keeps
+        ks <- resize 10 (listOf arbitrary) :: Gen [Node] -- Generate a list of Nodes for retainedSubFormula
         return $ Branch ns ps ks
-
 \end{code}
+}
 
 \textbf{Tableau Rules}\\
-Rules decompose formulas, producing either a closed branch (contradictory) or open branches (consistent). 
-\verb?applyRule? implements these rules, handling logical and epistemic operators.
-The rules are applied iteratively to unexpanded nodes until all branches are either closed or fully expanded (open).
+Rules decompose formulas, producing either a closed branch (contradictory) or open branches (consistent). The function\verb?applyRule? implements these rules, handling logical and epistemic operators. The rules are applied iteratively to unexpanded nodes until all branches are either closed or fully expanded (open).
 \vspace{10pt}
 \begin{code}
--- Result of applying a tableau rule
 data RuleResult = Closed | Open [Branch] deriving (Eq, Show)
-
-instance Arbitrary RuleResult where
-    arbitrary = oneof [ return Closed
-                      , Open <$> resize 5 (listOf arbitrary) ] -- Limit to 0-5 branches
 
 -- Generates fresh parameters not in the used set
 newParams :: Set StdName -> [StdName]
-newParams used = [StdName ("a" ++ show i) | i <- [(1::Int)..], StdName ("a" ++ show i) `Set.notMember` used]
+newParams used = [StdName ("n" ++ show i) | i <- [(1::Int)..], StdName ("n" ++ show i) `Set.notMember` used]
 
--- Applies tableau rules to a node on a branch
 applyRule :: Node -> Branch -> RuleResult
 applyRule (Node f w) branch = case f of
-  Atom g -> Open [Branch (nodes branch) (params branch) (keeps branch ++ [Node (Atom g) w])]   -- If formula is an atom: Do nothing; keep the formula in the branch.
-  Not (Atom g) -> Open [Branch (nodes branch) (params branch) (keeps branch ++ [Node (Not (Atom g)) w])]  -- Negated atoms remain, checked by isClosed
+  Atom g -> Open [Branch (nodes branch) (params branch) (retainedSubFormula branch ++ [Node (Atom g) w])]   -- If formula is an atom: Do nothing; keep the formula in the branch.
+  Not (Atom g) -> Open [Branch (nodes branch) (params branch) (retainedSubFormula branch ++ [Node (Not (Atom g)) w])]  -- Negated atoms remain, checked by isClosed
   Equal t1 t2 -> if t1 == t2 then Open [branch] else Closed -- Reflexive equality
   Not (Equal t1 t2) -> if t1 == t2 then Closed else Open [branch] -- Contradiction for t /= t
-  Not (Not f') -> Open [Branch (Node f' w : nodes branch) (params branch) (keeps branch)] -- Case: double negation, e.g., replace $\neg \neg \varphi$ with $\varphi$
-  Not (Or f1 f2) -> Open [Branch (Node (Not f1) w : Node (Not f2) w : nodes branch) (params branch) (keeps branch)] -- De Morgan: ~(f1 v f2) -> ~f1 & ~f2
-  Not (Exists x f') -> Open [Branch (Node (klforall x (Not f')) w : nodes branch) (params branch) (keeps branch)] -- Case:: negated existential
+  Not (Not f') -> Open [Branch (Node f' w : nodes branch) (params branch) (retainedSubFormula branch)] -- Case: double negation, e.g., replace $\neg \neg \varphi$ with $\varphi$
+  Not (Or f1 f2) -> Open [Branch (Node (Not f1) w : Node (Not f2) w : nodes branch) (params branch) (retainedSubFormula branch)] -- De Morgan: ~(f1 v f2) -> ~f1 & ~f2
+  Not (Exists x f') -> Open [Branch (Node (klforall x (Not f')) w : nodes branch) (params branch) (retainedSubFormula branch)] -- Case:: negated existential
   Not (K f') -> Open [expandKNot f' w branch] -- Case: negated knowledge
-  Or f1 f2 -> Open [ Branch (Node f1 w : nodes branch) (params branch) (keeps branch)
-                   , Branch (Node f2 w : nodes branch) (params branch) (keeps branch)] -- Disjunction rule, split the branch
+  Or f1 f2 -> Open [ Branch (Node f1 w : nodes branch) (params branch) (retainedSubFormula branch)
+                   , Branch (Node f2 w : nodes branch) (params branch) (retainedSubFormula branch)] -- Disjunction rule, split the branch
   Exists x f' ->   -- Existential rule ($\delta$-rule), introduce a fresh parameter a (e.g., a1​) not used elsewhere, substitute x with a, and continue
     let newParam = head (newParams (params branch))
         newBranch = Branch (Node (subst x newParam f') w : nodes branch)
-                          (Set.insert newParam (params branch)) (keeps branch)
+                          (Set.insert newParam (params branch)) (retainedSubFormula branch)
     in Open [newBranch]
   K f' -> Open [expandK f' w branch] -- Knowledge rule, add formula to a new world
 
--- Expands formula K \varphi to a new world
 expandK :: Formula -> TabWorld -> Branch -> Branch
-expandK f _ branch = Branch (Node f 1 : nodes branch) (params branch) (keeps branch) --- Only world 1
+expandK f _ branch = Branch (Node f 1 : nodes branch) (params branch) (retainedSubFormula branch) --- Only world 1
 
--- Expands \not K \varphi to a new world
 expandKNot :: Formula -> TabWorld -> Branch -> Branch
-expandKNot f _ branch = Branch (Node (Not f) 2 : nodes branch) (params branch) (keeps branch) ---Only world 1
---TODO : Explain this. 
+expandKNot f _ branch = Branch (Node (Not f) 2 : nodes branch) (params branch) (retainedSubFormula branch) ---Only world 1
 \end{code}
 
+\hide{
+\begin{code}
+instance Arbitrary RuleResult where
+    arbitrary = oneof [ return Closed
+                      , Open <$> resize 5 (listOf arbitrary) ] -- Limit to 0-5 branches
+\end{code}
+}
+
 \textbf{Branch Closure}\\
-The function \verb?isClosed? determines whether a tableau branch is contradictory (closed) or consistent (open). 
-A branch closes if it contains an explicit contradiction, meaning no model can satisfy all the formulas in that branch. 
-If a branch is not closed, it is potentially part of a satisfiable interpretation.
-The input is a \verb?Branch?, which has a list of nodes, \verb?nodes :: [Node]? (each \verb?Node f w? is a formula \verb?f? in world \verb?w?), and a list of used parameters, \verb?params :: Set StdName?.\\
+The function \verb?isClosed? determines whether a tableau branch is contradictory (closed) or consistent (open). A branch closes if it contains an explicit contradiction, meaning no model can satisfy all the formulas in that branch. If a branch is not closed, it is potentially part of a satisfiable interpretation.
+We acknowledge that the function \verb?isClosed? may have a better implementation. The current implementation is the result of resolving a bug found (using the package \verb?Debug.Trace?) at last minute. 
+
 The function works as follows: first, we collect the atoms (\verb?(a, w, True)? for positive atoms \verb?(Node (Atom a) w)?; \verb?(a, w, False)? for negated atoms \verb?(Node (Not (Atom a)) w)?).
-For example, if \verb?nodes = [Node (Atom P(n1)) 0, Node (Not (Atom P(n1))) 0]?, then \verb?atoms = [(P(n1), 0, True), (P(n1), 0, False)]?.
+For example, if \verb?nodes = [Node (Atom P(n1)) 0, Node (Not (Atom P(n1))) 0]?, \\ then \verb?atoms = [(P(n1), 0, True), (P(n1), 0, False)]?.
 Next, we collect the equalities. After this, we check the atom contradictions. There we use \verb?any? to find pairs in \verb?atoms? and return \verb?True? if a contradiction exists.
 In a subsequent step, we check for equality contradictions. 
-The result of the function is \verb?atomContra || eqContra?: this is \verb?True? if either type of contradiction is found and \verb?False? otherwise.
-This function reflects the semantic requirement that a world state $w$ in an epistemic state $e$ can not assign both \verb?True? and \verb?False? to the same ground atom or equality
-
+The result of the function is a disjunction of all the possible types of contradictions that may be found. Clearly the disjunction is \verb?True? if any type of contradiction is found and \verb?False? otherwise.
+This function reflects the semantic requirement that a world state $w$ in an epistemic state $e$ can not assign both \verb?True? and \verb?False? to the same ground atom or equality.
 \vspace{10pt}
 \begin{code}
--- Branch closure with function symbols
 isClosed :: Branch -> Bool
 isClosed b =
   let atoms = [(a, w, True) | Node (Atom a) w <- nodes b]
               ++ [(a, w, False) | Node (Not (Atom a)) w <- nodes b]
-      equals = [((t1, t2), w, True) | Node (Equal t1 t2) w <- nodes b] --nodes or keeps?
-              ++ [((t1, t2), w, False) | Node (Not (Equal t1 t2)) w <- nodes b]  --- nodes or keeps?
-      keepers = [(a, w, True) | Node (Atom a) w <- keeps b]
-              ++ [(a, w, False) | Node (Not (Atom a)) w <- keeps b]
-      keepContraActual = any (\(a1, w1, b1) -> any (\(a2, w2, b2) -> 
-                    a1 == a2 && w1 == 0 && w2 == 0 && b1 /= b2) keepers) keepers
-      keepContraModal = any (\(a1, w1, b1) -> any (\(a2, w2, b2) -> 
-                    a1 == a2 && ((w1 == 1 && w2 == 2) || (w1 == 2 && w2 == 1) || (w1 == 1 &&  w2 == 1)) && b1 /= b2) keepers) keepers
+      retainedAtoms = [(a, w, True) | Node (Atom a) w <- retainedSubFormula b]
+              ++ [(a, w, False) | Node (Not (Atom a)) w <- retainedSubFormula b]
+      equals = [((t1, t2), w, True) | Node (Equal t1 t2) w <- nodes b]
+              ++ [((t1, t2), w, False) | Node (Not (Equal t1 t2)) w <- nodes b]  
+      retainedAtomsContraActual = any (\(a1, w1, b1) -> any (\(a2, w2, b2) -> 
+                    a1 == a2 && w1 == 0 && w2 == 0 && b1 /= b2) retainedAtoms) retainedAtoms
+      retainedAtomsContraModal = any (\(a1, w1, b1) -> any (\(a2, w2, b2) -> 
+                    a1 == a2 && ((w1 == 1 && w2 == 2) || (w1 == 2 && w2 == 1) || (w1 == 1 &&  w2 == 1)) && b1 /= b2) retainedAtoms) retainedAtoms
       atomContraActual = any (\(a1, w1, b1) -> any (\(a2, w2, b2) -> 
                     a1 == a2 && w1 == 0 && w2 == 0 && b1 /= b2) atoms) atoms
       atomContraModal = any (\(a1, w1, b1) -> any (\(a2, w2, b2) -> 
@@ -148,8 +145,7 @@ isClosed b =
                     t1 == t3 && t2 == t4 && w1 == 0 && w2 == 0 && b1 /= b2) equals) equals
       eqContraModal = any (\((t1, t2), w1, b1) -> any (\((t3, t4), w2, b2) -> 
                     t1 == t3 && t2 == t4 && ((w1 == 1 && w2 == 2) || (w1 == 2 && w2 == 1) || (w1 == 1 && w2 == 1)) && b1 /= b2) equals) equals
-  in atomContraActual || atomContraModal || eqContraActual || eqContraModal || keepContraActual || keepContraModal-- True if any contradiction exists
---TODO Does this need explanation?
+  in atomContraActual || atomContraModal || eqContraActual || eqContraModal || retainedAtomsContraActual || retainedAtomsContraModal -- True if any contradiction exists
 \end{code}
 
 \textbf{Tableau Expasion}\\
@@ -172,7 +168,7 @@ expandTableau branches
          then Just openBranches
          else case expandable of
              (branch:rest) ->
-                 let ruleResult = applyRule (head (nodes branch)) (Branch (tail (nodes branch)) (params branch) (keeps branch))
+                 let ruleResult = applyRule (head (nodes branch)) (Branch (tail (nodes branch)) (params branch) (retainedSubFormula branch))
                  in case ruleResult of
                       Closed -> expandTableau rest
                       Open newBranches -> case expandTableau rest of
@@ -192,20 +188,17 @@ It then interprets the result: if \verb?expandTableau? returns \verb?Just? $\mat
 If \verb?expandTableau? returns \verb?Nothing?, this means that all branches are closed and the formula is unsatisfiable.
 \vspace{10pt}
 \begin{code}
--- Tests if a formula is satisfiable
 isSatisfiable :: Formula -> Bool
 isSatisfiable f = case expandTableau [Branch [Node f 0] Set.empty []] of 
   Just _ -> True
   Nothing -> False
-
 \end{code}
-The three functions \verb?isSatisfiable?, \verb?expandTableau?, and \verb?isClosed? interact as follows: \verb?isSatisfiable? starts the process with a single branch containing the formula. 
-Then, \verb?expandTableau? recursively applies \verb?applyRule? to decompose formulas, creating new branches as needed (e.g., for $\lor$, $\exists$).
+The three functions \verb?isSatisfiable?, \verb?expandTableau?, and \verb?isClosed? interact as follows: \\ \verb?isSatisfiable? starts the process with a single branch containing the formula. 
+Then, \\ \verb?expandTableau? recursively applies \verb?applyRule? to decompose formulas, creating new branches as needed (e.g., for $\lor$, $\exists$).
 In a next step, \verb?isClosed? checks each branch for contradictions, guiding \verb?expandTableau? to prune closed branches or halt with an open one.
 
 \vspace{10pt}
 \begin{code}
--- Tests if a formula is valid
 isValid :: Formula -> Bool
 isValid f = not (isSatisfiable (Not f))
 \end{code}
